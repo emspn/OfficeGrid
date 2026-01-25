@@ -1,0 +1,26 @@
+package com.app.officegrid.core.ui
+
+sealed class Screen(val route: String) {
+    object Welcome : Screen("welcome")
+    object Login : Screen("login")
+    object SignupRole : Screen("signup_role")
+    object CompanySignup : Screen("company_signup")
+    object EmployeeSignup : Screen("employee_signup")
+    
+    // Admin (Organisation) specific
+    object AdminDashboard : Screen("admin_dashboard")
+    object AdminTasks : Screen("admin_tasks")
+    object AdminCreateTask : Screen("admin_create_task")
+    object AdminTeam : Screen("admin_team")
+    object AdminProfile : Screen("admin_profile")
+    object AdminAuditLogs : Screen("admin_audit_logs")
+    
+    // Employee specific
+    object EmployeeTasks : Screen("employee_tasks")
+    object EmployeeProfile : Screen("employee_profile")
+    
+    // Shared Detail
+    object TaskDetail : Screen("task_detail/{taskId}") {
+        fun createRoute(taskId: String) = "task_detail/$taskId"
+    }
+}
