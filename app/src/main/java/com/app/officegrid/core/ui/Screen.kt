@@ -11,6 +11,9 @@ sealed class Screen(val route: String) {
     object AdminDashboard : Screen("admin_dashboard")
     object AdminTasks : Screen("admin_tasks")
     object AdminCreateTask : Screen("admin_create_task")
+    object AdminEditTask : Screen("admin_edit_task/{taskId}") {
+        fun createRoute(taskId: String) = "admin_edit_task/$taskId"
+    }
     object AdminTeam : Screen("admin_team")
     object AdminProfile : Screen("admin_profile")
     object AdminAuditLogs : Screen("admin_audit_logs")
@@ -19,7 +22,8 @@ sealed class Screen(val route: String) {
     object EmployeeTasks : Screen("employee_tasks")
     object EmployeeProfile : Screen("employee_profile")
     
-    // Shared Detail
+    // Shared
+    object Notifications : Screen("notifications")
     object TaskDetail : Screen("task_detail/{taskId}") {
         fun createRoute(taskId: String) = "task_detail/$taskId"
     }

@@ -6,13 +6,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.app.officegrid.auth.domain.repository.AuthRepository
+import com.app.officegrid.auth.presentation.WaitingApprovalScreen
 import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.common.UserRole
 import com.app.officegrid.core.ui.AdminMainScreen
@@ -27,9 +26,6 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var sessionManager: SessionManager
-    
-    @Inject
-    lateinit var authRepository: AuthRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,18 +35,19 @@ class MainActivity : ComponentActivity() {
                 val sessionState by sessionManager.sessionState.collectAsState()
                 val navController = rememberNavController()
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
-                        when {
-                            !sessionState.isLoggedIn -> {
-                                RootNavGraph(navController = navController)
-                            }
-                            sessionState.userRole == UserRole.ADMIN -> {
-                                AdminMainScreen()
-                            }
-                            sessionState.userRole == UserRole.EMPLOYEE -> {
-                                EmployeeMainScreen()
-                            }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        !sessionState.isLoggedIn -> {
+                            RootNavGraph(navController = navController)
+                        }
+                        !sessionState.isApproved -> {
+                            WaitingApprovalScreen()
+                        }
+                        sessionState.userRole == UserRole.ADMIN -> {
+                            AdminMainScreen()
+                        }
+                        sessionState.userRole == UserRole.EMPLOYEE -> {
+                            EmployeeMainScreen()
                         }
                     }
                 }

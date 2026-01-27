@@ -16,28 +16,29 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryBlueDark,
-    secondary = SecondaryBlue,
-    tertiary = Pink80,
-    background = BackgroundDark,
-    surface = SurfaceDark,
+    primary = PrimaryModern,
+    secondary = Gray700,
+    tertiary = ProfessionalSuccess,
+    background = DeepCharcoal,
+    surface = DeepCharcoal,
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryBlue,
-    secondary = SecondaryBlue,
-    tertiary = Pink40,
-    background = BackgroundGray,
-    surface = SurfaceWhite,
-    onPrimary = SurfaceWhite,
-    onSurface = StatusTodo
+    primary = PrimaryModern,
+    secondary = WarmBorder,
+    tertiary = ProfessionalSuccess,
+    background = WarmBackground,
+    surface = WarmSurface,
+    onPrimary = WarmSurface,
+    onSurface = DeepCharcoal,
+    outline = WarmBorder,
+    surfaceVariant = AccentGray
 )
 
 @Composable
 fun OfficeGridTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disabled for consistent branding
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

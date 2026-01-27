@@ -2,6 +2,7 @@ package com.app.officegrid.profile.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
 import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.ui.UiState
@@ -11,12 +12,20 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class ProfileData(val email: String, val role: String)
+data class ProfileData(
+    val fullName: String,
+    val email: String, 
+    val role: String,
+    val companyId: String,
+    val companyName: String? = null
+)
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
     private val sessionManager: SessionManager,
     private val getCurrentUserUseCase: GetCurrentUserUseCase
 ) : ViewModel() {
@@ -25,8 +34,11 @@ class ProfileViewModel @Inject constructor(
         .map { user ->
             user?.let {
                 ProfileData(
+                    fullName = it.fullName,
                     email = it.email,
-                    role = it.role.name
+                    role = it.role.name,
+                    companyId = it.companyId,
+                    companyName = it.companyName
                 )
             }
         }
@@ -38,6 +50,8 @@ class ProfileViewModel @Inject constructor(
         )
 
     fun logout() {
-        sessionManager.logout()
+        viewModelScope.launch {
+            authRepository.logout()
+        }
     }
 }

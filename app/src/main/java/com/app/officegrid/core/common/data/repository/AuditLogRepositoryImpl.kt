@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -71,11 +73,19 @@ class AuditLogRepositoryImpl @Inject constructor(
 
     private fun AuditLogDto.toEntity() = AuditLogEntity(
         id = id,
-        eventType = com.app.officegrid.core.common.domain.model.AuditEventType.valueOf(event_type),
+        eventType = try {
+            com.app.officegrid.core.common.domain.model.AuditEventType.valueOf(event_type.uppercase())
+        } catch (e: Exception) {
+            com.app.officegrid.core.common.domain.model.AuditEventType.CREATE 
+        },
         title = title,
         description = description,
         userId = user_id,
         userEmail = user_email,
-        createdAt = 0L // Future: Parse timestamp
+        createdAt = try {
+            Instant.parse(created_at).toEpochMilli()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
     )
 }

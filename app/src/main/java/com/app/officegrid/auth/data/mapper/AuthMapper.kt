@@ -8,6 +8,7 @@ fun UserDto.toDomain(): User {
     return User(
         id = id,
         email = email,
+        fullName = full_name,
         role = UserRole.valueOf(role.uppercase()),
         companyId = company_id
     )

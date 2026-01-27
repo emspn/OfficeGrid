@@ -2,62 +2,38 @@ package com.app.officegrid.auth.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.app.officegrid.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupRoleScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCompanySignup: () -> Unit,
     onNavigateToEmployeeSignup: () -> Unit
 ) {
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF312E81), // indigo-900
-            Color(0xFF3730A3), // indigo-800
-            Color(0xFF581C87)  // purple-900
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradient)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = WarmBackground
     ) {
         Column(
             modifier = Modifier
@@ -65,62 +41,80 @@ fun SignupRoleScreen(
                 .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Top Bar
-            Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp)) {
+            // Minimalist Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
                         imageVector = Icons.Default.ChevronLeft,
                         contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
+                        tint = DeepCharcoal,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "IDENTITY_INITIALIZATION",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.sp
+                    ),
+                    color = StoneGray
+                )
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 40.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "Join OfficeGrid",
-                    style = MaterialTheme.typography.displayMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    text = "Select Portal Type",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = DeepCharcoal
                 )
                 Text(
-                    text = "Select your account type",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color(0xFFC7D2FE),
+                    text = "Define your role within the network architecture.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = StoneGray,
                     modifier = Modifier.padding(top = 8.dp)
                 )
 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(48.dp))
 
-                // Organisation Card
-                RoleSelectionCard(
-                    title = "Organisation Account",
-                    description = "Create your organization workspace and get a unique company code to share with your team",
-                    icon = Icons.Default.Shield,
-                    color = Color(0xFF4F46E5),
-                    actionText = "Set up workspace",
+                // Organisation Role
+                EliteRoleCard(
+                    title = "ADMINISTRATOR",
+                    description = "Establish a new workspace node and manage team execution pipelines.",
+                    icon = Icons.Default.AddBusiness,
+                    accentColor = DeepCharcoal,
                     onClick = onNavigateToCompanySignup
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Employee Card
-                RoleSelectionCard(
-                    title = "Employee Account",
-                    description = "Join your company workspace using the company code provided by your administrator",
-                    icon = Icons.Default.Person,
-                    color = Color(0xFF059669),
-                    actionText = "Join with code",
+                // Employee Role
+                EliteRoleCard(
+                    title = "OPERATIVE",
+                    description = "Join an existing workspace using a secure access identifier code.",
+                    icon = Icons.Default.PersonAdd,
+                    accentColor = ProfessionalSuccess,
                     onClick = onNavigateToEmployeeSignup
                 )
                 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(60.dp))
+                
+                Text(
+                    "v1.2.4 // SESSION_INIT",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = WarmBorder
+                )
+                
                 Spacer(modifier = Modifier.navigationBarsPadding())
             }
         }
@@ -128,76 +122,65 @@ fun SignupRoleScreen(
 }
 
 @Composable
-fun RoleSelectionCard(
+fun EliteRoleCard(
     title: String,
     description: String,
     icon: ImageVector,
-    color: Color,
-    actionText: String,
+    accentColor: Color,
     onClick: () -> Unit
 ) {
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        color = Color.White,
+        shape = RoundedCornerShape(4.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
     ) {
         Row(
             modifier = Modifier.padding(24.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                color = Color.White.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(16.dp)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(accentColor.copy(alpha = 0.05f), RoundedCornerShape(2.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = Color.White
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = accentColor
+                )
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.sp
+                    ),
+                    color = accentColor,
+                    fontWeight = FontWeight.Black
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    lineHeight = 20.sp
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp),
+                    color = StoneGray,
+                    lineHeight = 18.sp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = actionText,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.White
-                    )
-                }
             }
+            
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                null,
+                tint = WarmBorder,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

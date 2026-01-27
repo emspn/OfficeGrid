@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.app.officegrid.dashboard.presentation.DashboardScreen
 import com.app.officegrid.profile.presentation.ProfileScreen
 import com.app.officegrid.tasks.presentation.task_detail.TaskDetailScreen
 import com.app.officegrid.tasks.presentation.task_list.TaskListScreen
@@ -18,6 +19,10 @@ fun EmployeeNavGraph(navController: NavHostController) {
     ) {
         composable(Screen.EmployeeTasks.route) {
             TaskListScreen()
+        }
+        // Fix: Added Dashboard route for Employees
+        composable(Screen.AdminDashboard.route) {
+            DashboardScreen()
         }
         composable(
             route = Screen.TaskDetail.route,

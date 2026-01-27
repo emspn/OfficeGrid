@@ -68,7 +68,8 @@ class SignupViewModel @Inject constructor(
                 fullName = _fullName.value,
                 role = role,
                 companyId = _companyId.value,
-                companyName = if (isOrg) _organisationName.value else null
+                companyName = if (isOrg) _organisationName.value else null,
+                orgType = if (isOrg) _organisationType.value else null
             )
                 .onSuccess {
                     _state.update { it.copy(isLoading = false, isSuccess = true) }

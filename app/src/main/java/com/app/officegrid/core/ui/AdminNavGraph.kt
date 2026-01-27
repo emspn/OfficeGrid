@@ -6,9 +6,11 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.app.officegrid.core.common.presentation.AuditLogsScreen
 import com.app.officegrid.dashboard.presentation.DashboardScreen
 import com.app.officegrid.profile.presentation.ProfileScreen
 import com.app.officegrid.tasks.presentation.create_task.CreateTaskScreen
+import com.app.officegrid.tasks.presentation.edit_task.EditTaskScreen
 import com.app.officegrid.tasks.presentation.task_detail.TaskDetailScreen
 import com.app.officegrid.tasks.presentation.task_list.TaskListScreen
 import com.app.officegrid.team.presentation.TeamScreen
@@ -26,7 +28,17 @@ fun AdminNavGraph(navController: NavHostController) {
             TaskListScreen()
         }
         composable(Screen.AdminCreateTask.route) {
-            CreateTaskScreen()
+            CreateTaskScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Screen.AdminEditTask.route,
+            arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+        ) {
+            EditTaskScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         composable(
             route = Screen.TaskDetail.route,
@@ -35,7 +47,7 @@ fun AdminNavGraph(navController: NavHostController) {
             TaskDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEdit = { id -> 
-                    // Future: Navigate to edit screen
+                    navController.navigate(Screen.AdminEditTask.createRoute(id))
                 }
             )
         }
@@ -44,6 +56,9 @@ fun AdminNavGraph(navController: NavHostController) {
         }
         composable(Screen.AdminProfile.route) {
             ProfileScreen()
+        }
+        composable(Screen.AdminAuditLogs.route) {
+            AuditLogsScreen()
         }
     }
 }

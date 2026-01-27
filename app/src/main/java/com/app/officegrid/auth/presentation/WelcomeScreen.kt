@@ -1,175 +1,127 @@
 package com.app.officegrid.auth.presentation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.app.officegrid.ui.theme.*
 
 @Composable
 fun WelcomeScreen(
     onNavigateToSignup: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF312E81), // indigo-900
-            Color(0xFF3730A3), // indigo-800
-            Color(0xFF581C87)  // purple-900
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradient)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = WarmBackground
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(40.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            // Main Content Area (Centered vertically)
-            Column(
+            Spacer(modifier = Modifier.weight(1f))
+            
+            // Refined Brand Anchor (consistent with Login)
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .size(48.dp)
+                    .background(DeepCharcoal, RoundedCornerShape(2.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                // App Logo
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(Color(0xFF818CF8), Color(0xFFA855F7))
-                            ),
-                            shape = RoundedCornerShape(32.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.BarChart,
-                        contentDescription = null,
-                        modifier = Modifier.size(72.dp),
-                        tint = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                Text(
-                    text = "OfficeGrid",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 56.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-1.5).sp
-                    ),
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Enterprise task execution and operational visibility platform",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 20.sp,
-                        lineHeight = 28.sp,
-                        fontWeight = FontWeight.Normal
-                    ),
-                    color = Color(0xFFC7D2FE), // indigo-200
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                Icon(
+                    imageVector = Icons.Default.Business,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
             }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                text = "OFFICE_GRID",
+                style = MaterialTheme.typography.displaySmall.copy(
+                    letterSpacing = 1.5.sp,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 32.sp
+                ),
+                color = DeepCharcoal
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = "Operational Visibility\n& Task Execution Platform",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 20.sp
+                ),
+                color = MutedSlate
+            )
+            
+            Text(
+                text = "Enterprise-grade system for high-output teams.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = StoneGray,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(60.dp))
 
-            // Bottom Buttons Area
+            // Professional Aligned Actions
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 40.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Button(
                     onClick = onNavigateToSignup,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    contentPadding = PaddingValues(0.dp)
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(2.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = DeepCharcoal)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFF6366F1), Color(0xFF9333EA))
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Get Started",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        "INITIALIZE_WORKSPACE", 
+                        style = MaterialTheme.typography.labelMedium, 
+                        color = Color.White, 
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 OutlinedButton(
                     onClick = onNavigateToLogin,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 2.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White,
-                        containerColor = Color(0x804338CA) // indigo-700/50
-                    )
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(2.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = DeepCharcoal)
                 ) {
                     Text(
-                        text = "Sign In",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        "RESTORE_SESSION", 
+                        style = MaterialTheme.typography.labelMedium, 
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
+            
+            Spacer(modifier = Modifier.weight(1.2f))
+            
+            Text(
+                "v1.2.4 // SECURE_DISTRIBUTION",
+                style = MaterialTheme.typography.labelSmall,
+                color = WarmBorder
+            )
         }
     }
 }

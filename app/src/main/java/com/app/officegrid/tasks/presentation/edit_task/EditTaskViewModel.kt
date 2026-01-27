@@ -1,5 +1,6 @@
-package com.app.officegrid.tasks.presentation.create_task
+package com.app.officegrid.tasks.presentation.edit_task
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
@@ -7,7 +8,6 @@ import com.app.officegrid.core.ui.Screen
 import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.model.TaskPriority
-import com.app.officegrid.tasks.domain.model.TaskStatus
 import com.app.officegrid.tasks.domain.repository.TaskRepository
 import com.app.officegrid.team.domain.model.Employee
 import com.app.officegrid.team.domain.model.EmployeeStatus
@@ -22,18 +22,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
-class CreateTaskViewModel @Inject constructor(
+class EditTaskViewModel @Inject constructor(
     private val repository: TaskRepository,
     private val employeeRepository: EmployeeRepository,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase
+    private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(CreateTaskUiState())
-    val state: StateFlow<CreateTaskUiState> = _state.asStateFlow()
+    private val taskId: String? = savedStateHandle["taskId"]
+
+    private val _state = MutableStateFlow(EditTaskUiState())
+    val state: StateFlow<EditTaskUiState> = _state.asStateFlow()
 
     private val _events = Channel<UiEvent>()
     val events: Flow<UiEvent> = _events.receiveAsFlow()
@@ -53,15 +55,30 @@ class CreateTaskViewModel @Inject constructor(
     private val _employees = MutableStateFlow<List<Employee>>(emptyList())
     val employees: StateFlow<List<Employee>> = _employees.asStateFlow()
 
+    private var originalTask: Task? = null
+
     init {
-        loadEmployees()
+        loadTaskAndEmployees()
     }
 
-    private fun loadEmployees() {
+    private fun loadTaskAndEmployees() {
+        val id = taskId ?: return
         viewModelScope.launch {
             val user = getCurrentUserUseCase().first() ?: return@launch
+            
+            // Load Employees
             employeeRepository.getEmployees(user.companyId).collect { list ->
                 _employees.value = list.filter { it.status == EmployeeStatus.APPROVED }
+            }
+        }
+        
+        viewModelScope.launch {
+            repository.getTaskById(id).onSuccess { task ->
+                originalTask = task
+                _title.value = task.title
+                _description.value = task.description
+                _priority.value = task.priority
+                _assignedTo.value = task.assignedTo
             }
         }
     }
@@ -71,43 +88,33 @@ class CreateTaskViewModel @Inject constructor(
     fun onPriorityChange(value: TaskPriority) { _priority.value = value }
     fun onAssignedToChange(value: String) { _assignedTo.value = value }
 
-    fun createTask() {
+    fun updateTask() {
         if (_title.value.isBlank()) {
             viewModelScope.launch { _events.send(UiEvent.ShowMessage("Title cannot be empty")) }
             return
         }
 
-        if (_assignedTo.value.isBlank()) {
-            viewModelScope.launch { _events.send(UiEvent.ShowMessage("Please assign the task to someone")) }
-            return
-        }
+        val currentTask = originalTask ?: return
 
         viewModelScope.launch {
-            val user = getCurrentUserUseCase().first() ?: return@launch
-            
             _state.update { it.copy(isLoading = true, error = null) }
             
-            val newTask = Task(
-                id = UUID.randomUUID().toString(),
+            val updatedTask = currentTask.copy(
                 title = _title.value,
                 description = _description.value,
-                status = TaskStatus.TODO,
                 priority = _priority.value,
-                assignedTo = _assignedTo.value,
-                createdBy = user.id,
-                companyId = user.companyId,
-                dueDate = System.currentTimeMillis() + 86400000 // Default to 1 day later
+                assignedTo = _assignedTo.value
             )
 
-            repository.createTask(newTask)
+            repository.updateTask(updatedTask)
                 .onSuccess {
                     _state.update { it.copy(isLoading = false, isSuccess = true) }
-                    _events.send(UiEvent.ShowMessage("Task created successfully"))
+                    _events.send(UiEvent.ShowMessage("Task updated successfully"))
                     _events.send(UiEvent.Navigate(Screen.AdminTasks.route))
                 }
                 .onFailure { error ->
                     _state.update { it.copy(isLoading = false, error = error.message) }
-                    _events.send(UiEvent.ShowMessage(error.message ?: "Failed to create task"))
+                    _events.send(UiEvent.ShowMessage(error.message ?: "Failed to update task"))
                 }
         }
     }

@@ -2,58 +2,36 @@ package com.app.officegrid.tasks.presentation.task_list
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.ui.UiState
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.model.TaskPriority
 import com.app.officegrid.tasks.domain.model.TaskStatus
-import com.app.officegrid.ui.theme.PriorityHigh
-import com.app.officegrid.ui.theme.PriorityLow
-import com.app.officegrid.ui.theme.PriorityMedium
-import com.app.officegrid.ui.theme.StatusDone
-import com.app.officegrid.ui.theme.StatusInProgress
-import com.app.officegrid.ui.theme.StatusTodo
+import com.app.officegrid.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,167 +44,176 @@ fun TaskListScreen(
     val state by viewModel.state.collectAsState()
     val lazyListState = rememberLazyListState()
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        when (val uiState = state) {
-            is UiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    Scaffold(
+        containerColor = WarmBackground,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("TASK_REGISTRY", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Gray900)
+                        Text("ACTIVE_OPERATIONAL_UNITS", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = viewModel::syncTasks) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = DeepCharcoal, modifier = Modifier.size(18.dp))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground)
+            )
+        }
+    ) { innerPadding ->
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            color = WarmBackground
+        ) {
+            when (val uiState = state) {
+                is UiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
+                    }
                 }
-            }
-            is UiState.Success -> {
-                val tasks = uiState.data
-                if (tasks.isEmpty()) {
-                    EmptyTasksState()
-                } else {
-                    PullToRefreshBox(
-                        isRefreshing = false,
-                        onRefresh = { /* Sync Logic */ },
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        LazyColumn(
-                            state = lazyListState,
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                is UiState.Success -> {
+                    val tasks = uiState.data
+                    if (tasks.isEmpty()) {
+                        EmptyTasksState()
+                    } else {
+                        PullToRefreshBox(
+                            isRefreshing = false,
+                            onRefresh = { viewModel.syncTasks() },
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(
-                                items = tasks,
-                                key = { it.id } // Performance: Efficient list updates
-                            ) { task ->
-                                TaskItem(task = task, onClick = { viewModel.onTaskClick(task.id) })
+                            LazyColumn(
+                                state = lazyListState,
+                                contentPadding = PaddingValues(24.dp),
+                                verticalArrangement = Arrangement.spacedBy(1.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(
+                                    items = tasks,
+                                    key = { it.id }
+                                ) { task ->
+                                    EliteTaskRow(
+                                        task = task, 
+                                        onClick = { viewModel.onTaskClick(task.id) }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
-            is UiState.Error -> {
-                ErrorState(message = uiState.message, onRetry = { /* Retry Logic */ })
+                is UiState.Error -> {
+                    ErrorState(message = uiState.message, onRetry = { viewModel.syncTasks() })
+                }
             }
         }
     }
 }
 
 @Composable
-fun TaskItem(task: Task, onClick: () -> Unit) {
-    // Performance: Using remember for static formatting logic
+fun EliteTaskRow(task: Task, onClick: () -> Unit) {
     val formattedDate = remember(task.dueDate) { formatDueDate(task.dueDate) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StatusChip(status = task.status)
-                PriorityBadge(priority = task.priority)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = task.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            if (task.description.isNotBlank()) {
-                Text(
-                    text = task.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = formattedDate,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun StatusChip(status: TaskStatus) {
-    val backgroundColor = remember(status) {
-        when (status) {
-            TaskStatus.TODO -> StatusTodo.copy(alpha = 0.1f)
-            TaskStatus.IN_PROGRESS -> StatusInProgress.copy(alpha = 0.1f)
-            TaskStatus.DONE -> StatusDone.copy(alpha = 0.1f)
-        }
-    }
-    val textColor = remember(status) {
-        when (status) {
-            TaskStatus.TODO -> StatusTodo
-            TaskStatus.IN_PROGRESS -> StatusInProgress
-            TaskStatus.DONE -> StatusDone
-        }
+    
+    val accentColor = when (task.priority) {
+        TaskPriority.HIGH -> ProfessionalError
+        TaskPriority.MEDIUM -> ProfessionalWarning
+        TaskPriority.LOW -> DeepCharcoal
     }
 
     Surface(
-        color = backgroundColor,
-        shape = CircleShape,
-        modifier = Modifier.height(24.dp)
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, WarmBorder)
     ) {
-        Text(
-            text = status.name.replace("_", " "),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = textColor
-        )
-    }
-}
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Technical Status Marker
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(6.dp)
+                    .background(accentColor, CircleShape)
+            )
 
-@Composable
-fun PriorityBadge(priority: TaskPriority) {
-    val color = remember(priority) {
-        when (priority) {
-            TaskPriority.LOW -> PriorityLow
-            TaskPriority.MEDIUM -> PriorityMedium
-            TaskPriority.HIGH -> PriorityHigh
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = task.status.name,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp),
+                        color = when(task.status) {
+                            TaskStatus.DONE -> ProfessionalSuccess
+                            TaskStatus.IN_PROGRESS -> ProfessionalWarning
+                            TaskStatus.TODO -> StoneGray
+                        }
+                    )
+                    Text(
+                        text = "PRIORITY // ${task.priority.name}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                        color = accentColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
+                    color = Gray900,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (task.description.isNotBlank()) {
+                    Text(
+                        text = task.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = StoneGray,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                            tint = Gray500
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "DUE: $formattedDate",
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                            color = Gray500
+                        )
+                    }
+                    
+                    Text(
+                        text = "REF_ID: ${task.id.take(8).uppercase()}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                        color = WarmBorder
+                    )
+                }
+            }
         }
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = priority.name,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -238,16 +225,16 @@ fun EmptyTasksState() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = Icons.Default.Assignment,
+            imageVector = Icons.AutoMirrored.Filled.Assignment,
             contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            modifier = Modifier.size(48.dp),
+            tint = WarmBorder
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No tasks assigned",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "REGISTRY_VACANT",
+            style = MaterialTheme.typography.labelSmall,
+            color = Gray500
         )
     }
 }
@@ -255,32 +242,32 @@ fun EmptyTasksState() {
 @Composable
 fun ErrorState(message: String, onRetry: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error
+            text = "CONNECTION_FAILURE",
+            style = MaterialTheme.typography.labelSmall,
+            color = ProfessionalError
         )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = message,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 8.dp)
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            color = StoneGray
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onRetry) {
-            Icon(Icons.Default.Refresh, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Retry")
+        TextButton(
+            onClick = onRetry
+        ) {
+            Text("RETRY_SYNC", style = MaterialTheme.typography.labelSmall, color = DeepCharcoal)
         }
     }
 }
 
 fun formatDueDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    return "Due: ${sdf.format(Date(timestamp))}"
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }

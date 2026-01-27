@@ -13,7 +13,9 @@ import com.app.officegrid.dashboard.domain.repository.AnalyticsRepository
 import com.app.officegrid.tasks.data.remote.SupabaseTaskDataSource
 import com.app.officegrid.tasks.data.remote.TaskRemoteDataSource
 import com.app.officegrid.tasks.data.repository.TaskRepositoryImpl
+import com.app.officegrid.tasks.data.repository.TaskRemarkRepositoryImpl
 import com.app.officegrid.tasks.domain.repository.TaskRepository
+import com.app.officegrid.tasks.domain.repository.TaskRemarkRepository
 import com.app.officegrid.team.data.repository.EmployeeRepositoryImpl
 import com.app.officegrid.team.domain.repository.EmployeeRepository
 import dagger.Binds
@@ -73,4 +75,10 @@ abstract class RepositoryModule {
     abstract fun bindAuditLogRepository(
         auditLogRepositoryImpl: AuditLogRepositoryImpl
     ): AuditLogRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTaskRemarkRepository(
+        taskRemarkRepositoryImpl: TaskRemarkRepositoryImpl
+    ): TaskRemarkRepository
 }

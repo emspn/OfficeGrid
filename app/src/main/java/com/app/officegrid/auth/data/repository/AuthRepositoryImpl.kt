@@ -35,7 +35,7 @@ class AuthRepositoryImpl @Inject constructor(
                 when (status) {
                     is SessionStatus.Authenticated -> {
                         val user = remoteDataSource.getCurrentUserInfo()?.toDomain()
-                        user?.let { sessionManager.login(it.role) }
+                        user?.let { sessionManager.login(it.role, it.isApproved) }
                     }
                     is SessionStatus.NotAuthenticated -> {
                         sessionManager.logout()
@@ -99,7 +99,14 @@ class AuthRepositoryImpl @Inject constructor(
         return sessionManager.sessionState.map { state ->
             if (state.isLoggedIn && state.userRole != null) {
                 val userInfo = remoteDataSource.getCurrentUserInfo()
-                userInfo?.toDomain() ?: User("id", "email", state.userRole, "company")
+                userInfo?.toDomain() ?: User(
+                    id = "id", 
+                    email = "email", 
+                    fullName = "User", 
+                    role = state.userRole, 
+                    companyId = "company",
+                    isApproved = state.isApproved
+                )
             } else null
         }
     }
@@ -115,15 +122,22 @@ class AuthRepositoryImpl @Inject constructor(
         val roleMetadata = userMetadata?.get("role")?.toString()?.removeSurrounding("\"")
         val role = when {
             roleMetadata?.uppercase() == "ADMIN" -> UserRole.ADMIN
-            email?.contains("admin") == true -> UserRole.ADMIN
             else -> UserRole.EMPLOYEE
         }
+        
+        val isApproved = if (role == UserRole.ADMIN) true 
+                         else userMetadata?.get("is_approved")?.toString()?.toBoolean() ?: false
+        
+        val companyName = userMetadata?.get("organisation_name")?.toString()?.removeSurrounding("\"")
         
         return User(
             id = id,
             email = email ?: "",
+            fullName = userMetadata?.get("full_name")?.toString()?.removeSurrounding("\"") ?: "User",
             role = role,
-            companyId = userMetadata?.get("company_id")?.toString()?.removeSurrounding("\"") ?: ""
+            companyId = userMetadata?.get("company_id")?.toString()?.removeSurrounding("\"") ?: "",
+            companyName = companyName,
+            isApproved = isApproved
         )
     }
 }

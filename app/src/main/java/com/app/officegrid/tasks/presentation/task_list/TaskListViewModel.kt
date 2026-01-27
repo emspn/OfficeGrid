@@ -8,20 +8,24 @@ import com.app.officegrid.core.ui.UiState
 import com.app.officegrid.core.ui.asUiState
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.usecase.GetTasksUseCase
+import com.app.officegrid.tasks.domain.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class TaskListViewModel @Inject constructor(
     private val getTasksUseCase: GetTasksUseCase,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase
+    private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val repository: TaskRepository
 ) : ViewModel() {
 
     private val _events = Channel<UiEvent>()
@@ -39,6 +43,13 @@ class TaskListViewModel @Inject constructor(
         )
 
     fun onTaskClick(taskId: String) {
-        // Example event
+        // Handle task click
+    }
+
+    fun syncTasks() {
+        viewModelScope.launch {
+            val user = getCurrentUserUseCase().first() ?: return@launch
+            repository.syncTasks(user.id)
+        }
     }
 }

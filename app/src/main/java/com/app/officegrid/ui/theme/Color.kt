@@ -2,31 +2,54 @@ package com.app.officegrid.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Enterprise Palette
-val PrimaryBlue = Color(0xFF1A73E8)
-val SecondaryBlue = Color(0xFFE8F0FE)
-val BackgroundGray = Color(0xFFF8F9FA)
-val SurfaceWhite = Color(0xFFFFFFFF)
+// Warm Professional Palette (Stone & Charcoal)
+val WarmBackground = Color(0xFFFAF9F6) // Warm Alabaster
+val WarmSurface = Color(0xFFFFFFFF)
+val DeepCharcoal = Color(0xFF1A1A1A) // Richer, warmer black
+val MutedSlate = Color(0xFF4A4A4A)
+val StoneGray = Color(0xFF717171)
+val WarmBorder = Color(0xFFE5E5E1) // Softer, warmer border
+val AccentGray = Color(0xFFF2F1ED) // Soft section background
 
-// Status Colors
-val StatusTodo = Color(0xFF5F6368)
-val StatusInProgress = Color(0xFFFBBC04)
-val StatusDone = Color(0xFF34A853)
+// Status Colors (Refined & Muted)
+val ProfessionalSuccess = Color(0xFF2D6A4F) // Forest Green
+val ProfessionalWarning = Color(0xFFD4A373) // Warm Sand/Gold
+val ProfessionalError = Color(0xFF9B2226)   // Deep Crimson
 
-// Priority Colors
-val PriorityLow = Color(0xFF1A73E8)
-val PriorityMedium = Color(0xFFF29900)
-val PriorityHigh = Color(0xFFD93025)
+// Legacy Mapping
+val Gray900 = DeepCharcoal
+val Gray700 = MutedSlate
+val Gray600 = StoneGray
+val Gray500 = StoneGray
+val Gray200 = WarmBorder
+val Gray100 = AccentGray
+val Gray50 = WarmBackground
 
-// Dark Mode Palette
-val PrimaryBlueDark = Color(0xFF8AB4F8)
-val SurfaceDark = Color(0xFF202124)
-val BackgroundDark = Color(0xFF121212)
+val PrimaryModern = DeepCharcoal
+val PrimaryLight = WarmBackground
+val PrimaryDark = Color(0xFF000000)
 
-// Legacy compatibility (if needed)
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val SecondaryModern = ProfessionalSuccess
+val BackgroundModern = WarmBackground
+val SurfaceModern = WarmSurface
+
+val Slate900 = DeepCharcoal
+val Slate700 = MutedSlate
+val Slate500 = StoneGray
+val Slate100 = AccentGray
+
+val ErrorModern = ProfessionalError
+val WarningModern = ProfessionalWarning
+val SuccessModern = ProfessionalSuccess
+
+val BrandSuccess = ProfessionalSuccess
+val BrandWarning = ProfessionalWarning
+val BrandError = ProfessionalError
+
+val StatusTodo = StoneGray
+val StatusInProgress = ProfessionalWarning
+val StatusDone = ProfessionalSuccess
+
+val PriorityLow = StoneGray
+val PriorityMedium = ProfessionalWarning
+val PriorityHigh = ProfessionalError

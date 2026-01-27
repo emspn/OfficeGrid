@@ -14,7 +14,8 @@ enum class UserRole {
 
 data class SessionState(
     val isLoggedIn: Boolean = false,
-    val userRole: UserRole? = null
+    val userRole: UserRole? = null,
+    val isApproved: Boolean = false
 )
 
 @Singleton
@@ -22,15 +23,15 @@ class SessionManager @Inject constructor() {
     private val _sessionState = MutableStateFlow(SessionState())
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
-    fun login(role: UserRole) {
+    fun login(role: UserRole, isApproved: Boolean) {
         _sessionState.update { 
-            it.copy(isLoggedIn = true, userRole = role)
+            it.copy(isLoggedIn = true, userRole = role, isApproved = isApproved)
         }
     }
 
     fun logout() {
         _sessionState.update { 
-            it.copy(isLoggedIn = false, userRole = null)
+            it.copy(isLoggedIn = false, userRole = null, isApproved = false)
         }
     }
 }
