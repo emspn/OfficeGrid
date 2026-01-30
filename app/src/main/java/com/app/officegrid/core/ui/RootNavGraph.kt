@@ -55,6 +55,9 @@ fun RootNavGraph(
         composable(route = Screen.CompanySignup.route) {
             SignupScreen(
                 role = UserRole.ADMIN,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Welcome.route) { inclusive = false }
@@ -66,6 +69,9 @@ fun RootNavGraph(
         composable(route = Screen.EmployeeSignup.route) {
             SignupScreen(
                 role = UserRole.EMPLOYEE,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Welcome.route) { inclusive = false }

@@ -1,56 +1,28 @@
 package com.app.officegrid.tasks.presentation.edit_task
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.tasks.domain.model.TaskPriority
+import com.app.officegrid.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,115 +50,114 @@ fun EditTaskScreen(
     }
 
     Scaffold(
+        containerColor = WarmBackground,
         topBar = {
             TopAppBar(
-                title = { Text("Edit Task") },
+                title = {
+                    Column {
+                        Text("UPDATE_SPECIFICATIONS", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Gray900)
+                        Text("RECONFIGURATION_INTERFACE", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
+                windowInsets = WindowInsets.statusBars
             )
         }
     ) { innerPadding ->
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(innerPadding),
+            color = WarmBackground
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(24.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
+                // Technical Ledger Section: Core Identity
+                EliteFormSection(label = "SPECIFICATION_IDENTIFIER") {
+                    EliteTextField(
                         value = title,
                         onValueChange = viewModel::onTitleChange,
-                        label = { Text("Task Title") },
-                        leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !state.isLoading,
-                        singleLine = true
+                        placeholder = "ASSIGNMENT_TITLE",
+                        singleLine = true,
+                        enabled = !state.isLoading
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
+                    Spacer(modifier = Modifier.height(1.dp))
+                    EliteTextField(
                         value = description,
                         onValueChange = viewModel::onDescriptionChange,
-                        label = { Text("Description") },
-                        leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !state.isLoading,
-                        minLines = 3
+                        placeholder = "OPERATIONAL_SPECIFICATIONS",
+                        minLines = 4,
+                        enabled = !state.isLoading
                     )
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                    ExposedDropdownMenuBox(
+                // Technical Ledger Section: Deployment Metadata
+                EliteFormSection(label = "DEPLOYMENT_RECONFIGURATION") {
+                    // Priority Selector
+                    EliteDropdown(
+                        label = "PRIORITY_LEVEL",
+                        value = priority.name,
+                        icon = Icons.Default.Flag,
+                        iconColor = when(priority) {
+                            TaskPriority.HIGH -> ProfessionalError
+                            TaskPriority.MEDIUM -> ProfessionalWarning
+                            else -> DeepCharcoal
+                        },
                         expanded = priorityExpanded,
-                        onExpandedChange = { if (!state.isLoading) priorityExpanded = it }
+                        onExpandedChange = { priorityExpanded = it },
+                        enabled = !state.isLoading
                     ) {
-                        OutlinedTextField(
-                            value = priority.name,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Priority") },
-                            leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = priorityExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            enabled = !state.isLoading
-                        )
-                        ExposedDropdownMenu(
-                            expanded = priorityExpanded,
-                            onDismissRequest = { priorityExpanded = false }
-                        ) {
-                            TaskPriority.entries.forEach { p ->
-                                DropdownMenuItem(
-                                    text = { Text(p.name) },
-                                    onClick = {
-                                        viewModel.onPriorityChange(p)
-                                        priorityExpanded = false
-                                    }
-                                )
-                            }
+                        TaskPriority.entries.forEach { p ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        p.name, 
+                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace)
+                                    ) 
+                                },
+                                onClick = {
+                                    viewModel.onPriorityChange(p)
+                                    priorityExpanded = false
+                                }
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(1.dp))
 
-                    ExposedDropdownMenuBox(
+                    // Employee Selector
+                    val selectedEmployee = employees.find { it.id == assignedTo }
+                    EliteDropdown(
+                        label = "ASSIGNED_NODE",
+                        value = selectedEmployee?.name ?: "SELECT_OPERATIVE",
+                        icon = Icons.Default.Person,
                         expanded = employeeExpanded,
-                        onExpandedChange = { if (!state.isLoading) employeeExpanded = it }
+                        onExpandedChange = { employeeExpanded = it },
+                        enabled = !state.isLoading
                     ) {
-                        val selectedEmployee = employees.find { it.id == assignedTo }
-                        OutlinedTextField(
-                            value = selectedEmployee?.name ?: "Select Team Member",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Assign To") },
-                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = employeeExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            enabled = !state.isLoading
-                        )
-                        ExposedDropdownMenu(
-                            expanded = employeeExpanded,
-                            onDismissRequest = { employeeExpanded = false }
-                        ) {
+                        if (employees.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("NO_ACTIVE_OPERATIVES", style = MaterialTheme.typography.labelSmall) },
+                                onClick = { employeeExpanded = false }
+                            )
+                        } else {
                             employees.forEach { emp ->
                                 DropdownMenuItem(
                                     text = { 
                                         Column {
-                                            Text(emp.name, style = MaterialTheme.typography.bodyLarge)
-                                            Text(emp.email, style = MaterialTheme.typography.bodySmall)
+                                            Text(emp.name.uppercase(), style = MaterialTheme.typography.labelMedium)
+                                            Text(emp.email, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = StoneGray)
                                         }
                                     },
                                     onClick = {
@@ -198,32 +169,144 @@ fun EditTaskScreen(
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(48.dp))
 
-            if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(48.dp))
-            } else {
-                Button(
-                    onClick = viewModel::updateTask,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Icon(Icons.Default.Save, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save Changes", style = MaterialTheme.typography.titleMedium)
+                // Action Button
+                if (state.isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
+                    }
+                } else {
+                    Surface(
+                        onClick = viewModel::updateTask,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = DeepCharcoal,
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Text(
+                            text = "COMMIT_CHANGES",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        )
+                    }
                 }
-            }
 
-            state.error?.let {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                state.error?.let {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "CONFIGURATION_ERROR: $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ProfessionalError,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(40.dp))
             }
-
-            Spacer(modifier = Modifier.height(40.dp))
         }
+    }
+}
+
+@Composable
+private fun EliteFormSection(label: String, content: @Composable ColumnScope.() -> Unit) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+                color = MutedSlate
+            )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun EliteTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    enabled: Boolean = true,
+    singleLine: Boolean = false,
+    minLines: Int = 1
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodySmall, color = WarmBorder) },
+        enabled = enabled,
+        singleLine = singleLine,
+        minLines = minLines,
+        modifier = Modifier.fillMaxWidth(),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color.White,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            cursorColor = DeepCharcoal,
+            focusedTextColor = DeepCharcoal,
+            unfocusedTextColor = DeepCharcoal
+        ),
+        textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
+        shape = RoundedCornerShape(0.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EliteDropdown(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color = DeepCharcoal,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) onExpandedChange(it) }
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled),
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(0.dp, Color.Transparent)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(icon, null, modifier = Modifier.size(16.dp), tint = iconColor)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = StoneGray)
+                    Text(value.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace))
+                }
+                Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(16.dp), tint = StoneGray)
+            }
+        }
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(Color.White),
+            content = content
+        )
     }
 }

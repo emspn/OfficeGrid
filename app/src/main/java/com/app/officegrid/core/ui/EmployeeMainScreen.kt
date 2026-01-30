@@ -38,13 +38,16 @@ fun EmployeeMainScreen(
         NavigationItem("SYSTEM_PROFILE", Screen.EmployeeProfile.route, Icons.Default.AccountCircle)
     )
 
+    val currentRoute = currentDestination?.route
+    val isDetailScreen = currentRoute in listOf(
+        Screen.TaskDetail.route,
+        Screen.Notifications.route
+    )
+
     Scaffold(
         containerColor = WarmBackground,
         topBar = {
-            Surface(
-                color = WarmBackground,
-                border = androidx.compose.foundation.BorderStroke(0.dp, Color.Transparent)
-            ) {
+            if (!isDetailScreen) {
                 CenterAlignedTopAppBar(
                     title = { 
                         Text(
@@ -89,8 +92,7 @@ fun EmployeeMainScreen(
                 NavigationBar(
                     containerColor = Color.White,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
-                    windowInsets = WindowInsets(0, 0, 0, 0)
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
                 ) {
                     items.forEach { item ->
                         val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true

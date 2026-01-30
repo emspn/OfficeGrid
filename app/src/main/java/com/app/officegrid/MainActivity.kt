@@ -6,11 +6,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.auth.presentation.WaitingApprovalScreen
 import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.common.UserRole
@@ -34,9 +39,25 @@ class MainActivity : ComponentActivity() {
             OfficeGridTheme {
                 val sessionState by sessionManager.sessionState.collectAsState()
                 val navController = rememberNavController()
+                var isCheckingSession by remember { mutableStateOf(true) }
+
+                // Check for existing session on launch
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(500) // Small delay to let Supabase check session
+                    isCheckingSession = false
+                }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
+                        isCheckingSession -> {
+                            // Show loading while checking for existing session
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                         !sessionState.isLoggedIn -> {
                             RootNavGraph(navController = navController)
                         }

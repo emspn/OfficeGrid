@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.app.officegrid.team.domain.model.EmployeeStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,6 +14,12 @@ interface EmployeeDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEmployees(employees: List<EmployeeEntity>)
+
+    @Query("UPDATE employees SET status = :status WHERE id = :employeeId")
+    suspend fun updateEmployeeStatus(employeeId: String, status: EmployeeStatus)
+
+    @Query("DELETE FROM employees WHERE id = :employeeId")
+    suspend fun deleteEmployee(employeeId: String)
 
     @Query("DELETE FROM employees WHERE companyId = :companyId")
     suspend fun deleteEmployeesByCompany(companyId: String)

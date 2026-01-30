@@ -8,6 +8,7 @@ import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.model.TaskPriority
 import com.app.officegrid.tasks.domain.model.TaskStatus
+import com.app.officegrid.tasks.domain.model.TaskTemplate
 import com.app.officegrid.tasks.domain.repository.TaskRepository
 import com.app.officegrid.team.domain.model.Employee
 import com.app.officegrid.team.domain.model.EmployeeStatus
@@ -50,6 +51,9 @@ class CreateTaskViewModel @Inject constructor(
     private val _assignedTo = MutableStateFlow("")
     val assignedTo: StateFlow<String> = _assignedTo.asStateFlow()
 
+    private val _dueDate = MutableStateFlow(System.currentTimeMillis() + 86400000) // Default: tomorrow
+    val dueDate: StateFlow<Long> = _dueDate.asStateFlow()
+
     private val _employees = MutableStateFlow<List<Employee>>(emptyList())
     val employees: StateFlow<List<Employee>> = _employees.asStateFlow()
 
@@ -70,6 +74,7 @@ class CreateTaskViewModel @Inject constructor(
     fun onDescriptionChange(value: String) { _description.value = value }
     fun onPriorityChange(value: TaskPriority) { _priority.value = value }
     fun onAssignedToChange(value: String) { _assignedTo.value = value }
+    fun onDueDateChange(value: Long) { _dueDate.value = value }
 
     fun createTask() {
         if (_title.value.isBlank()) {
@@ -96,7 +101,7 @@ class CreateTaskViewModel @Inject constructor(
                 assignedTo = _assignedTo.value,
                 createdBy = user.id,
                 companyId = user.companyId,
-                dueDate = System.currentTimeMillis() + 86400000 // Default to 1 day later
+                dueDate = _dueDate.value
             )
 
             repository.createTask(newTask)
@@ -111,4 +116,55 @@ class CreateTaskViewModel @Inject constructor(
                 }
         }
     }
+
+    fun createTasksFromTemplate(template: TaskTemplate) {
+        if (_assignedTo.value.isBlank()) {
+            viewModelScope.launch {
+                _events.send(UiEvent.ShowMessage("Please select an employee first"))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            val user = getCurrentUserUseCase().first() ?: return@launch
+
+            _state.update { it.copy(isLoading = true, error = null) }
+
+            var successCount = 0
+            var failCount = 0
+
+            // Create tasks from template
+            template.tasks.forEachIndexed { index, templateTask ->
+                // Calculate due date based on estimated days
+                val daysFromNow = template.tasks.take(index + 1).sumOf { it.estimatedDays }
+                val taskDueDate = System.currentTimeMillis() + (daysFromNow * 86400000L)
+
+                val newTask = Task(
+                    id = UUID.randomUUID().toString(),
+                    title = templateTask.title,
+                    description = templateTask.description,
+                    status = TaskStatus.TODO,
+                    priority = templateTask.priority,
+                    assignedTo = _assignedTo.value,
+                    createdBy = user.id,
+                    companyId = user.companyId,
+                    dueDate = taskDueDate
+                )
+
+                repository.createTask(newTask)
+                    .onSuccess { successCount++ }
+                    .onFailure { failCount++ }
+            }
+
+            _state.update { it.copy(isLoading = false, isSuccess = successCount > 0) }
+
+            if (successCount > 0) {
+                _events.send(UiEvent.ShowMessage("✅ Created $successCount tasks from ${template.name}!"))
+                _events.send(UiEvent.Navigate(Screen.AdminTasks.route))
+            } else {
+                _events.send(UiEvent.ShowMessage("❌ Failed to create tasks"))
+            }
+        }
+    }
 }
+

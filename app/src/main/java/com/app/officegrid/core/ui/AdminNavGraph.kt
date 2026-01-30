@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.app.officegrid.core.common.presentation.AuditLogsScreen
+import com.app.officegrid.core.common.presentation.NotificationScreen
 import com.app.officegrid.dashboard.presentation.DashboardScreen
 import com.app.officegrid.profile.presentation.ProfileScreen
 import com.app.officegrid.tasks.presentation.create_task.CreateTaskScreen
@@ -14,6 +15,8 @@ import com.app.officegrid.tasks.presentation.edit_task.EditTaskScreen
 import com.app.officegrid.tasks.presentation.task_detail.TaskDetailScreen
 import com.app.officegrid.tasks.presentation.task_list.TaskListScreen
 import com.app.officegrid.team.presentation.TeamScreen
+import com.app.officegrid.settings.presentation.SettingsScreen
+import com.app.officegrid.organization.presentation.OrganizationSettingsScreen
 
 @Composable
 fun AdminNavGraph(navController: NavHostController) {
@@ -55,10 +58,28 @@ fun AdminNavGraph(navController: NavHostController) {
             TeamScreen()
         }
         composable(Screen.AdminProfile.route) {
-            ProfileScreen()
+            ProfileScreen(
+                onNavigateToSettings = { navController.navigate(Screen.AdminSettings.route) },
+                onNavigateToOrganization = { navController.navigate(Screen.OrganizationSettings.route) }
+            )
         }
         composable(Screen.AdminAuditLogs.route) {
             AuditLogsScreen()
+        }
+        composable(Screen.AdminSettings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.OrganizationSettings.route) {
+            OrganizationSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Notifications.route) {
+            NotificationScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

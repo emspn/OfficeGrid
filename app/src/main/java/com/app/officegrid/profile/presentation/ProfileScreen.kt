@@ -27,6 +27,8 @@ import com.app.officegrid.ui.theme.*
 
 @Composable
 fun ProfileScreen(
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToOrganization: () -> Unit = {},
     profileViewModel: ProfileViewModel = hiltViewModel(),
     settingsViewModel: NotificationSettingsViewModel = hiltViewModel()
 ) {
@@ -43,21 +45,17 @@ fun ProfileScreen(
                 .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Text(
-                text = "ACCOUNT_OVERVIEW",
-                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
-                color = Gray900
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
+            // Reclaimed Top Space
+            Column(modifier = Modifier.padding(top = 24.dp, bottom = 32.dp)) {
+                Text("ACCOUNT_OVERVIEW", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
+                Text("SYSTEM_USER_CONFIGURATION", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+            }
 
             // 1. Unified Profile Console
             when (val uiState = profileState) {
                 is UiState.Loading -> {
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Gray900, strokeWidth = 1.dp)
+                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp)
                     }
                 }
                 is UiState.Success -> {
@@ -87,16 +85,15 @@ fun ProfileScreen(
             // 2. Notification Control Section
             Text(
                 text = "NOTIFICATION_PREFERENCES",
-                style = MaterialTheme.typography.labelMedium,
-                color = MutedSlate,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
+                color = MutedSlate
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(2.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -126,23 +123,92 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
+            // Quick Actions Section
+            Text(
+                text = "QUICK_ACTIONS",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
+                color = MutedSlate
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+
+            // Settings Button
+            Surface(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(2.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp), tint = DeepCharcoal)
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Settings", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
+                            Text("App preferences & options", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = StoneGray)
+                        }
+                    }
+                    Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(20.dp), tint = StoneGray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Organization Button
+            Surface(
+                onClick = onNavigateToOrganization,
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(2.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Business, null, modifier = Modifier.size(20.dp), tint = DeepCharcoal)
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Organization", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
+                            Text("Company settings & info", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = StoneGray)
+                        }
+                    }
+                    Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(20.dp), tint = StoneGray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             // 3. System Termination
-            Button(
+            Surface(
                 onClick = { profileViewModel.logout() },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = DeepCharcoal)
+                color = DeepCharcoal,
+                shape = RoundedCornerShape(2.dp)
             ) {
-                Icon(Icons.Default.PowerSettingsNew, null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("SIGN_OUT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.PowerSettingsNew, null, modifier = Modifier.size(18.dp), tint = Color.White)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("TERMINATE_SESSION", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black, color = Color.White))
+                }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                "SESSION_ID: ${System.currentTimeMillis().toString(36).uppercase()}",
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = Gray200,
+                "SESSION_REF: ${System.currentTimeMillis().toString(36).uppercase()}",
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                color = WarmBorder,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
             Spacer(modifier = Modifier.height(40.dp))
@@ -157,7 +223,7 @@ fun EliteProfileConsole(profile: ProfileData) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = DeepCharcoal,
-            shape = RoundedCornerShape(4.dp)
+            shape = RoundedCornerShape(2.dp)
         ) {
             Row(
                 modifier = Modifier.padding(24.dp),
@@ -179,11 +245,11 @@ fun EliteProfileConsole(profile: ProfileData) {
                 }
                 Spacer(Modifier.width(20.dp))
                 Column {
-                    Text(profile.fullName.uppercase(), style = MaterialTheme.typography.titleLarge, color = Color.White)
+                    Text(profile.fullName.uppercase(), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black), color = Color.White)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(6.dp).background(ProfessionalSuccess, CircleShape))
                         Spacer(Modifier.width(8.dp))
-                        Text("ACTIVE", style = MaterialTheme.typography.labelSmall, color = ProfessionalSuccess)
+                        Text("ACTIVE_NODE", style = MaterialTheme.typography.labelSmall, color = ProfessionalSuccess)
                     }
                 }
             }
@@ -192,36 +258,36 @@ fun EliteProfileConsole(profile: ProfileData) {
         Spacer(Modifier.height(32.dp))
 
         // Technical Data Points
-        Text("USER_IDENTITY", style = MaterialTheme.typography.labelMedium, color = MutedSlate, fontWeight = FontWeight.Bold)
+        Text("IDENTITY_METADATA", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp), color = MutedSlate)
         Spacer(Modifier.height(16.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(2.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 ConsoleInfoRow("ROLE", profile.role)
                 Spacer(Modifier.height(20.dp))
-                ConsoleInfoRow("EMAIL", profile.email, isMonospace = true)
+                ConsoleInfoRow("EMAIL_AUTH", profile.email, isMonospace = true)
             }
         }
 
         Spacer(Modifier.height(32.dp))
 
         // Workspace Distribution
-        Text("ORGANISATION_DETAILS", style = MaterialTheme.typography.labelMedium, color = MutedSlate, fontWeight = FontWeight.Bold)
+        Text("ORGANISATION_SPECIFICATIONS", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp), color = MutedSlate)
         Spacer(Modifier.height(16.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(2.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                ConsoleInfoRow("NAME", profile.companyName ?: "NOT_SPECIFIED")
+                ConsoleInfoRow("LEGAL_NAME", profile.companyName ?: "NOT_SPECIFIED")
                 Spacer(Modifier.height(20.dp))
-                ConsoleInfoRow("ID", profile.companyId, isMonospace = true)
+                ConsoleInfoRow("REGISTRY_ID", profile.companyId, isMonospace = true)
             }
         }
     }
@@ -230,14 +296,14 @@ fun EliteProfileConsole(profile: ProfileData) {
 @Composable
 fun ConsoleInfoRow(label: String, value: String, isMonospace: Boolean = false) {
     Column {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = StoneGray)
+        Text(text = label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = StoneGray)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge.copy(
+            text = value.uppercase(),
+            style = MaterialTheme.typography.bodyMedium.copy(
                 fontFamily = if (isMonospace) FontFamily.Monospace else FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp
+                fontSize = 13.sp
             ),
             color = DeepCharcoal
         )
@@ -251,7 +317,7 @@ fun ConsoleToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) ->
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Gray700)
+        Text(text = label.uppercase(), style = MaterialTheme.typography.labelMedium, color = Gray700)
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,

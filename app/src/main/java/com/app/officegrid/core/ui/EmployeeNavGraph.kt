@@ -6,10 +6,11 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.app.officegrid.dashboard.presentation.DashboardScreen
+import com.app.officegrid.core.common.presentation.NotificationScreen
+import com.app.officegrid.employee.presentation.dashboard.EmployeeDashboardScreen
+import com.app.officegrid.employee.presentation.tasks.EmployeeTaskListScreen
 import com.app.officegrid.profile.presentation.ProfileScreen
 import com.app.officegrid.tasks.presentation.task_detail.TaskDetailScreen
-import com.app.officegrid.tasks.presentation.task_list.TaskListScreen
 
 @Composable
 fun EmployeeNavGraph(navController: NavHostController) {
@@ -18,11 +19,14 @@ fun EmployeeNavGraph(navController: NavHostController) {
         startDestination = Screen.EmployeeTasks.route
     ) {
         composable(Screen.EmployeeTasks.route) {
-            TaskListScreen()
+            EmployeeTaskListScreen(onTaskClick = { taskId ->
+                navController.navigate(Screen.TaskDetail.createRoute(taskId))
+            })
         }
-        // Fix: Added Dashboard route for Employees
         composable(Screen.AdminDashboard.route) {
-            DashboardScreen()
+            EmployeeDashboardScreen(onTaskClick = { taskId ->
+                navController.navigate(Screen.TaskDetail.createRoute(taskId))
+            })
         }
         composable(
             route = Screen.TaskDetail.route,
@@ -35,6 +39,11 @@ fun EmployeeNavGraph(navController: NavHostController) {
         }
         composable(Screen.EmployeeProfile.route) {
             ProfileScreen()
+        }
+        composable(Screen.Notifications.route) {
+            NotificationScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

@@ -108,8 +108,8 @@ fun WelcomeScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = DeepCharcoal)
                 ) {
                     Text(
-                        "RESTORE_SESSION", 
-                        style = MaterialTheme.typography.labelMedium, 
+                        "LOGIN",
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }

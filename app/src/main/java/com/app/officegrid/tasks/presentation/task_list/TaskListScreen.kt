@@ -1,9 +1,9 @@
 package com.app.officegrid.tasks.presentation.task_list
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -11,10 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HourglassTop
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -28,9 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.ui.UiState
+import com.app.officegrid.core.ui.components.EmptySearchState
+import com.app.officegrid.core.ui.components.EmptyTasksState
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.model.TaskPriority
+import com.app.officegrid.tasks.domain.model.TaskSortOption
 import com.app.officegrid.tasks.domain.model.TaskStatus
+import com.app.officegrid.tasks.presentation.components.SwipeableTaskCard
+import com.app.officegrid.tasks.presentation.task_list.components.SortDialog
 import com.app.officegrid.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -42,29 +44,47 @@ fun TaskListScreen(
     viewModel: TaskListViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val selectedStatus by viewModel.selectedStatus.collectAsState()
+    val selectedPriority by viewModel.selectedPriority.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val sortOption by viewModel.sortOption.collectAsState()
     val lazyListState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var showSortDialog by remember { mutableStateOf(false) }
+
+    // Auto-sync when screen loads
+    LaunchedEffect(Unit) {
+        viewModel.syncTasks()
+    }
+
+    // Handle events (snackbar messages)
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is com.app.officegrid.core.ui.UiEvent.ShowMessage -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    // Show sort dialog
+    if (showSortDialog) {
+        SortDialog(
+            currentSort = sortOption,
+            onSortSelected = viewModel::onSortOptionSelected,
+            onDismiss = { showSortDialog = false }
+        )
+    }
 
     Scaffold(
         containerColor = WarmBackground,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("TASK_REGISTRY", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Gray900)
-                        Text("ACTIVE_OPERATIONAL_UNITS", style = MaterialTheme.typography.labelSmall, color = StoneGray)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = viewModel::syncTasks) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = DeepCharcoal, modifier = Modifier.size(18.dp))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground)
-            )
-        }
-    ) { innerPadding ->
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
         Surface(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
             color = WarmBackground
         ) {
             when (val uiState = state) {
@@ -73,40 +93,157 @@ fun TaskListScreen(
                         CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
                     }
                 }
-                is UiState.Success -> {
-                    val tasks = uiState.data
-                    if (tasks.isEmpty()) {
-                        EmptyTasksState()
-                    } else {
-                        PullToRefreshBox(
-                            isRefreshing = false,
-                            onRefresh = { viewModel.syncTasks() },
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            LazyColumn(
-                                state = lazyListState,
-                                contentPadding = PaddingValues(24.dp),
-                                verticalArrangement = Arrangement.spacedBy(1.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(
-                                    items = tasks,
-                                    key = { it.id }
-                                ) { task ->
-                                    EliteTaskRow(
-                                        task = task, 
-                                        onClick = { viewModel.onTaskClick(task.id) }
-                                    )
+            is UiState.Success -> {
+                val tasks = uiState.data
+                PullToRefreshBox(
+                    isRefreshing = false,
+                    onRefresh = { viewModel.syncTasks() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        state = lazyListState,
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item {
+                            Column(modifier = Modifier.padding(24.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("TASK_REGISTRY", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
+                                        Text("ACTIVE_OPERATIONAL_UNITS", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                                    }
+
+                                    // Sort Button
+                                    IconButton(
+                                        onClick = { showSortDialog = true },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.FilterList,
+                                            contentDescription = "Sort",
+                                            tint = DeepCharcoal,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
                                 }
+
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
+                                // Search Bar
+                                SearchBar(
+                                    query = searchQuery,
+                                    onQueryChange = viewModel::onSearchQueryChange,
+                                    onSearchClear = viewModel::onSearchClear
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Status Filter Bar
+                                StatusFilterBar(
+                                    selectedStatus = selectedStatus,
+                                    onStatusSelected = viewModel::onStatusFilterSelected
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // Priority Filter Bar
+                                PriorityFilterBar(
+                                    selectedPriority = selectedPriority,
+                                    onPrioritySelected = viewModel::onPriorityFilterSelected
+                                )
+                            }
+                        }
+
+                        if (tasks.isEmpty()) {
+                            item {
+                                // Show different empty states based on context
+                                if (searchQuery.isNotEmpty() || selectedStatus != null || selectedPriority != null) {
+                                    EmptySearchState()
+                                } else {
+                                    EmptyTasksState()
+                                }
+                            }
+                        } else {
+                            items(
+                                items = tasks,
+                                key = { it.id }
+                            ) { task ->
+                                SwipeableTaskCard(
+                                    task = task,
+                                    onClick = { viewModel.onTaskClick(task.id) },
+                                    onStatusChange = { newStatus ->
+                                        viewModel.updateTaskStatus(task.id, newStatus)
+                                    },
+                                    onDelete = {
+                                        viewModel.deleteTask(task.id)
+                                    }
+                                )
                             }
                         }
                     }
                 }
-                is UiState.Error -> {
-                    ErrorState(message = uiState.message, onRetry = { viewModel.syncTasks() })
-                }
+            }
+            is UiState.Error -> {
+                ErrorState(message = uiState.message, onRetry = { viewModel.syncTasks() })
             }
         }
+        }
+    }
+}
+
+@Composable
+fun StatusFilterBar(
+    selectedStatus: TaskStatus?,
+    onStatusSelected: (TaskStatus?) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 0.dp)
+    ) {
+        item {
+            FilterChipElite(
+                label = "ALL_UNITS",
+                isSelected = selectedStatus == null,
+                onClick = { onStatusSelected(null) }
+            )
+        }
+        items(TaskStatus.entries.toTypedArray()) { status ->
+            FilterChipElite(
+                label = status.name,
+                isSelected = selectedStatus == status,
+                onClick = { onStatusSelected(status) }
+            )
+        }
+    }
+}
+
+@Composable
+fun FilterChipElite(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = if (isSelected) DeepCharcoal else Color.White,
+        shape = RoundedCornerShape(2.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) DeepCharcoal else WarmBorder)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                fontSize = 10.sp
+            ),
+            color = if (isSelected) Color.White else StoneGray
+        )
     }
 }
 
@@ -130,7 +267,6 @@ fun EliteTaskRow(task: Task, onClick: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Technical Status Marker
             Box(
                 modifier = Modifier
                     .padding(top = 4.dp)
@@ -220,7 +356,7 @@ fun EliteTaskRow(task: Task, onClick: () -> Unit) {
 @Composable
 fun EmptyTasksState() {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
@@ -20,9 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.tasks.domain.model.TaskPriority
 import com.app.officegrid.ui.theme.*
+import kotlinx.coroutines.launch
 
+@Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTaskScreen(
@@ -34,36 +39,81 @@ fun CreateTaskScreen(
     val description by viewModel.description.collectAsState()
     val priority by viewModel.priority.collectAsState()
     val assignedTo by viewModel.assignedTo.collectAsState()
+    val dueDate by viewModel.dueDate.collectAsState()
     val employees by viewModel.employees.collectAsState()
 
     var priorityExpanded by remember { mutableStateOf(false) }
     var employeeExpanded by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTemplateSelector by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-        containerColor = WarmBackground,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("TASK_INITIALIZATION", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Gray900)
-                        Text("UNIT_ALLOCATION_INTERFACE", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is UiEvent.ShowMessage -> {
+                    // Launch snackbar in a separate coroutine so it doesn't block navigation
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = event.message,
+                            duration = SnackbarDuration.Short
+                        )
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
+                }
+                is UiEvent.Navigate -> {
+                    // Navigate back immediately
+                    onNavigateBack()
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = dueDate
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { selectedDate ->
+                        viewModel.onDueDateChange(selectedDate)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
-                windowInsets = WindowInsets.statusBars
+                    showDatePicker = false
+                }) {
+                    Text("CONFIRM", style = MaterialTheme.typography.labelSmall, color = DeepCharcoal)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("CANCEL", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = WarmBackground
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = WarmBackground,
+                    selectedDayContainerColor = DeepCharcoal,
+                    todayDateBorderColor = DeepCharcoal
+                )
             )
         }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = WarmBackground
     ) { innerPadding ->
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
             color = WarmBackground
         ) {
             Column(
@@ -72,6 +122,56 @@ fun CreateTaskScreen(
                     .verticalScroll(scrollState)
                     .padding(24.dp)
             ) {
+                // Reclaimed Header Space with Back Navigation
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onNavigateBack, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("TASK_INITIALIZATION", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
+                        Text("UNIT_ALLOCATION_INTERFACE", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                    }
+
+                    // Use Template Button
+                    OutlinedButton(
+                        onClick = { showTemplateSelector = true },
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = DeepCharcoal
+                        ),
+                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Apps,
+                            contentDescription = "Templates",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Templates",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+
+                // Template Selector Dialog
+                if (showTemplateSelector) {
+                    com.app.officegrid.tasks.presentation.templates.TaskTemplateSelectionScreen(
+                        onTemplateSelected = { template ->
+                            showTemplateSelector = false
+                            // Create tasks from template
+                            viewModel.createTasksFromTemplate(template)
+                        },
+                        onDismiss = { showTemplateSelector = false }
+                    )
+                }
+
                 // Technical Ledger Section: Core Identity
                 EliteFormSection(label = "CORE_IDENTIFIER") {
                     EliteTextField(
@@ -156,6 +256,31 @@ fun CreateTaskScreen(
                                         employeeExpanded = false
                                     }
                                 )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(1.dp))
+
+                    // Due Date Selector
+                    val dateFormat = remember { java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()) }
+                    val formattedDate = remember(dueDate) { dateFormat.format(java.util.Date(dueDate)) }
+
+                    Surface(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        enabled = !state.isLoading
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(16.dp), tint = DeepCharcoal)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("DUE_DATE", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = StoneGray)
+                                Text(formattedDate.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace))
                             }
                         }
                     }

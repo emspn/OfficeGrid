@@ -1,53 +1,20 @@
 package com.app.officegrid.auth.presentation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -56,11 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.common.UserRole
+import com.app.officegrid.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupScreen(
     role: UserRole,
+    onNavigateBack: () -> Unit,
     onNavigateToLogin: () -> Unit,
     viewModel: SignupViewModel = hiltViewModel()
 ) {
@@ -85,219 +54,323 @@ fun SignupScreen(
         "Government", "Others"
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp)
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = WarmBackground
     ) {
-        Spacer(modifier = Modifier.height(60.dp))
-
-        Text(
-            text = if (role == UserRole.ADMIN) "Create Organisation" else "Join as Employee",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        
-        Text(
-            text = if (role == UserRole.ADMIN) "Setup your company workspace" else "Connect with your team",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                // Common Field: Full Name
-                OutlinedTextField(
+            // Technical Header - Full Width
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = DeepCharcoal,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (role == UserRole.ADMIN) "ORG_INITIALIZATION" else "NODE_ENROLLMENT",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            letterSpacing = 1.sp,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp
+                        ),
+                        color = DeepCharcoal
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (role == UserRole.ADMIN) "WORKSPACE_PROVISIONING" else "ACCESS_CONFIGURATION",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        color = StoneGray
+                    )
+                }
+            }
+
+            // Form Content - Consistent Padding
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+
+            // Section 1: User Identity
+            EliteSignupSection(label = "IDENTITY_SPECIFICATIONS") {
+                EliteSignupTextField(
                     value = fullName,
                     onValueChange = viewModel::onFullNameChange,
-                    label = { Text("Your Full Name") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isLoading,
-                    singleLine = true
+                    placeholder = "FULL_NAME_LITERAL",
+                    icon = Icons.Default.Person,
+                    enabled = !state.isLoading
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Organisation Specific Fields
-                if (role == UserRole.ADMIN) {
-                    OutlinedTextField(
-                        value = organisationName,
-                        onValueChange = viewModel::onOrganisationNameChange,
-                        label = { Text("Organisation Name") },
-                        leadingIcon = { Icon(Icons.Default.Business, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !state.isLoading,
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Organisation Type Dropdown - Professional M3 Implementation
-                    ExposedDropdownMenuBox(
-                        expanded = orgTypeExpanded,
-                        onExpandedChange = { if (!state.isLoading) orgTypeExpanded = it },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = organisationType,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Organisation Type") },
-                            leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = orgTypeExpanded) },
-                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            enabled = !state.isLoading
-                        )
-                        
-                        ExposedDropdownMenu(
-                            expanded = orgTypeExpanded,
-                            onDismissRequest = { orgTypeExpanded = false },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            orgTypes.forEach { type ->
-                                DropdownMenuItem(
-                                    text = { 
-                                        Text(
-                                            text = type,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            modifier = Modifier.padding(vertical = 4.dp)
-                                        ) 
-                                    },
-                                    onClick = {
-                                        viewModel.onOrganisationTypeChange(type)
-                                        orgTypeExpanded = false
-                                    },
-                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Common Field: Email
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(1.dp))
+                EliteSignupTextField(
                     value = email,
                     onValueChange = viewModel::onEmailChange,
-                    label = { Text("Work Email") },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = "AUTH_EMAIL_NODE",
+                    icon = Icons.Default.Email,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    enabled = !state.isLoading,
-                    singleLine = true
+                    enabled = !state.isLoading
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Organisation ID Field with Instructions
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Info, 
-                            contentDescription = null, 
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (role == UserRole.ADMIN) 
-                                "Employees will use this unique ID to join your company." 
-                            else 
-                                "Enter the unique ID provided by your administrator.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = companyId,
-                        onValueChange = viewModel::onCompanyIdChange,
-                        label = { Text("Organisation ID (Unique Key)") },
-                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("e.g. ACME123") },
-                        enabled = !state.isLoading,
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Common Field: Password
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(1.dp))
+                EliteSignupTextField(
                     value = password,
                     onValueChange = viewModel::onPasswordChange,
-                    label = { Text("Password") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    placeholder = "ACCESS_CREDENTIAL",
+                    icon = Icons.Default.Lock,
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
                                 imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = "Toggle password visibility"
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = StoneGray
                             )
                         }
                     },
+                    enabled = !state.isLoading
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Section 2: Organisation Metadata
+            EliteSignupSection(label = "WORKSPACE_PARAMETERS") {
+                if (role == UserRole.ADMIN) {
+                    EliteSignupTextField(
+                        value = organisationName,
+                        onValueChange = viewModel::onOrganisationNameChange,
+                        placeholder = "ORGANISATION_NOMENCLATURE",
+                        icon = Icons.Default.Business,
+                        enabled = !state.isLoading
+                    )
+                    Spacer(modifier = Modifier.height(1.dp))
+                    
+                    // Org Type Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = orgTypeExpanded,
+                        onExpandedChange = { if (!state.isLoading) orgTypeExpanded = it }
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                            color = Color.White
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp), tint = DeepCharcoal)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = if (organisationType.isBlank()) "SECTOR_CLASSIFICATION" else organisationType.uppercase(),
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        color = if (organisationType.isBlank()) WarmBorder else DeepCharcoal
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(18.dp), tint = StoneGray)
+                            }
+                        }
+                        ExposedDropdownMenu(
+                            expanded = orgTypeExpanded,
+                            onDismissRequest = { orgTypeExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            orgTypes.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.uppercase(), style = MaterialTheme.typography.labelSmall) },
+                                    onClick = {
+                                        viewModel.onOrganisationTypeChange(type)
+                                        orgTypeExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(1.dp))
+                }
+
+                EliteSignupTextField(
+                    value = companyId,
+                    onValueChange = viewModel::onCompanyIdChange,
+                    placeholder = if (role == UserRole.ADMIN) "ASSIGN_UNIQUE_WORKSPACE_ID" else "TARGET_WORKSPACE_KEY",
+                    icon = Icons.Default.Key,
+                    enabled = !state.isLoading
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Action Buttons
+            if (state.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = DeepCharcoal,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            } else {
+                Surface(
+                    onClick = { viewModel.signup(role) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    color = DeepCharcoal,
+                    shape = RoundedCornerShape(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (role == UserRole.ADMIN) "INITIALIZE_ORG_STATION" else "REQUEST_NODE_ACCESS",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp
+                            ),
+                            color = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                TextButton(
+                    onClick = onNavigateToLogin,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "EXISTING_NODE? PROCEED_TO_AUTH",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        color = DeepCharcoal
+                    )
+                }
+            }
+
+            // Error Message
+            state.error?.let { error ->
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    enabled = !state.isLoading,
-                    singleLine = true
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (state.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(48.dp))
-        } else {
-            Button(
-                onClick = { viewModel.signup(role) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
-                    text = if (role == UserRole.ADMIN) "Create Workspace Account" else "Join Workspace",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                    color = ProfessionalError.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "ERROR: $error",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        ),
+                        color = ProfessionalError,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            TextButton(
-                onClick = onNavigateToLogin,
-                modifier = Modifier.height(48.dp)
-            ) {
-                Text(text = "Already have an account? Login")
+            Spacer(modifier = Modifier.height(40.dp))
             }
         }
-
-        state.error?.let {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
     }
+}
+
+@Composable
+private fun EliteSignupSection(label: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp,
+                fontSize = 11.sp
+            ),
+            color = MutedSlate,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+private fun EliteSignupTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    trailingIcon: @Composable (() -> Unit)? = null
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = {
+            Text(
+                placeholder,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                color = WarmBorder
+            )
+        },
+        leadingIcon = {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = DeepCharcoal
+            )
+        },
+        trailingIcon = trailingIcon,
+        enabled = enabled,
+        singleLine = true,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color(0xFFF5F5F5),
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            cursorColor = DeepCharcoal,
+            focusedTextColor = DeepCharcoal,
+            unfocusedTextColor = DeepCharcoal,
+            disabledTextColor = StoneGray
+        ),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        ),
+        shape = RoundedCornerShape(2.dp)
+    )
 }

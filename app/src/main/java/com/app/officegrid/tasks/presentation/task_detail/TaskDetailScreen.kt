@@ -9,7 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -81,61 +81,34 @@ fun TaskDetailScreen(
         )
     }
 
-    Scaffold(
-        containerColor = WarmBackground,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("UNIT_SPECIFICATIONS", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Gray900)
-                        Text("SYSTEM_OPERATIONAL_OVERVIEW", style = MaterialTheme.typography.labelSmall, color = StoneGray)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
-                    }
-                },
-                actions = {
-                    if (currentUser?.role == UserRole.ADMIN) {
-                        IconButton(onClick = { (state as? UiState.Success)?.data?.id?.let(onNavigateToEdit) }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = DeepCharcoal, modifier = Modifier.size(20.dp))
-                        }
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ProfessionalError, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
-                windowInsets = WindowInsets.statusBars
-            )
-        }
-    ) { innerPadding ->
-        Surface(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            color = WarmBackground
-        ) {
-            when (val uiState = state) {
-                is UiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
-                    }
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = WarmBackground
+    ) {
+        when (val uiState = state) {
+            is UiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
                 }
-                is UiState.Success -> {
-                    TaskDetailContent(
-                        task = uiState.data,
-                        remarks = remarks,
-                        remarkMessage = remarkMessage,
-                        isUpdating = isUpdating,
-                        onRemarkChange = viewModel::onRemarkMessageChange,
-                        onAddRemark = viewModel::addRemark,
-                        onUpdateStatus = viewModel::updateStatus
-                    )
-                }
-                is UiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = "UNIT_FETCH_FAILURE: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
-                    }
+            }
+            is UiState.Success -> {
+                TaskDetailContent(
+                    task = uiState.data,
+                    remarks = remarks,
+                    remarkMessage = remarkMessage,
+                    isUpdating = isUpdating,
+                    currentUser = currentUser,
+                    onNavigateBack = onNavigateBack,
+                    onNavigateToEdit = onNavigateToEdit,
+                    onShowDelete = { showDeleteDialog = true },
+                    onRemarkChange = viewModel::onRemarkMessageChange,
+                    onAddRemark = viewModel::addRemark,
+                    onUpdateStatus = viewModel::updateStatus
+                )
+            }
+            is UiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "UNIT_FETCH_FAILURE: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
                 }
             }
         }
@@ -148,6 +121,10 @@ fun TaskDetailContent(
     remarks: List<TaskRemark>,
     remarkMessage: String,
     isUpdating: Boolean,
+    currentUser: com.app.officegrid.auth.domain.model.User?,
+    onNavigateBack: () -> Unit,
+    onNavigateToEdit: (String) -> Unit,
+    onShowDelete: () -> Unit,
     onRemarkChange: (String) -> Unit,
     onAddRemark: () -> Unit,
     onUpdateStatus: (TaskStatus) -> Unit
@@ -160,6 +137,30 @@ fun TaskDetailContent(
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
+        // Reclaimed Header Space with Navigation & Actions
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onNavigateBack, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("UNIT_SPECIFICATIONS", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
+                Text("SYSTEM_OPERATIONAL_OVERVIEW", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+            }
+            if (currentUser?.role == UserRole.ADMIN) {
+                IconButton(onClick = { onNavigateToEdit(task.id) }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = DeepCharcoal, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onShowDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ProfessionalError, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
         // Technical Header Section
         Surface(
             modifier = Modifier.fillMaxWidth(),

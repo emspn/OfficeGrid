@@ -40,57 +40,52 @@ fun AdminMainScreen(
         NavigationItem("PROFILE", Screen.AdminProfile.route, Icons.Default.Person)
     )
 
-    val showFab = currentDestination?.hierarchy?.any { it.route == Screen.AdminTasks.route } == true
+    val currentRoute = currentDestination?.route
+    val isDetailScreen = currentRoute in listOf(
+        Screen.AdminCreateTask.route,
+        Screen.AdminEditTask.route,
+        Screen.TaskDetail.route,
+        Screen.Notifications.route
+    )
 
     Scaffold(
         containerColor = WarmBackground,
         topBar = {
-            val isDetailScreen = currentDestination?.route in listOf(
-                Screen.AdminCreateTask.route,
-                Screen.AdminEditTask.route,
-                Screen.TaskDetail.route,
-                Screen.Notifications.route
-            )
             if (!isDetailScreen) {
-                Surface(
-                    color = WarmBackground,
-                    border = androidx.compose.foundation.BorderStroke(0.dp, Color.Transparent)
-                ) {
-                    TopAppBar(
-                        title = { 
-                            Text(
-                                "OFFICE_GRID", 
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    letterSpacing = 2.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black
-                                ),
-                                color = DeepCharcoal
-                            ) 
-                        },
-                        actions = {
-                            IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
-                                BadgedBox(
-                                    badge = { 
-                                        if (unreadNotifications > 0) {
-                                            Badge(
-                                                containerColor = ProfessionalError,
-                                                contentColor = Color.White
-                                            ) {
-                                                Text(unreadNotifications.toString())
-                                            }
+                TopAppBar(
+                    title = { 
+                        Text(
+                            "OFFICE_GRID", 
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                letterSpacing = 2.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Black
+                            ),
+                            color = DeepCharcoal
+                        ) 
+                    },
+                    actions = {
+                        IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
+                            BadgedBox(
+                                badge = { 
+                                    if (unreadNotifications > 0) {
+                                        Badge(
+                                            containerColor = ProfessionalError,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text(unreadNotifications.toString())
                                         }
                                     }
-                                ) {
-                                    Icon(Icons.Default.Notifications, null, tint = DeepCharcoal, modifier = Modifier.size(20.dp))
                                 }
+                            ) {
+                                Icon(Icons.Default.Notifications, null, tint = DeepCharcoal, modifier = Modifier.size(20.dp))
                             }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
-                        windowInsets = WindowInsets.statusBars
-                    )
-                }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
+                    windowInsets = WindowInsets.statusBars
+                )
             }
         },
         bottomBar = {
@@ -101,8 +96,7 @@ fun AdminMainScreen(
                 NavigationBar(
                     containerColor = Color.White,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
-                    windowInsets = WindowInsets(0, 0, 0, 0)
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
                 ) {
                     items.forEach { item ->
                         val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
@@ -150,7 +144,7 @@ fun AdminMainScreen(
             }
         },
         floatingActionButton = {
-            if (showFab) {
+            if (currentRoute == Screen.AdminTasks.route) {
                 FloatingActionButton(
                     onClick = { navController.navigate(Screen.AdminCreateTask.route) },
                     containerColor = DeepCharcoal,

@@ -36,62 +36,55 @@ fun NotificationScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    Scaffold(
-        containerColor = WarmBackground,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("SYSTEM_INBOX", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Gray900)
-                        Text("ACTIVE_COMMUNICATION_STREAM", style = MaterialTheme.typography.labelSmall, color = StoneGray)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { viewModel.markAllAsRead() }) {
-                        Text("MARK_ALL_READ", style = MaterialTheme.typography.labelSmall, color = Gray700)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
-                windowInsets = WindowInsets.statusBars
-            )
-        }
-    ) { innerPadding ->
-        Surface(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            color = WarmBackground
-        ) {
-            when (val uiState = state) {
-                is UiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp)
-                    }
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = WarmBackground
+    ) {
+        when (val uiState = state) {
+            is UiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp)
                 }
-                is UiState.Success -> {
-                    if (uiState.data.isEmpty()) {
-                        EmptyNotificationState()
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(24.dp),
-                            verticalArrangement = Arrangement.spacedBy(1.dp)
+            }
+            is UiState.Success -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            items(uiState.data, key = { it.id }) { notification ->
-                                EliteNotificationRow(notification) {
-                                    viewModel.markAsRead(notification.id)
-                                }
+                            IconButton(onClick = onNavigateBack, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
+                            }
+                            Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                                Text("SYSTEM_INBOX", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
+                                Text("ACTIVE_COMMUNICATION_STREAM", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                            }
+                            TextButton(onClick = { viewModel.markAllAsRead() }) {
+                                Text("CLEAR_ALL", style = MaterialTheme.typography.labelSmall, color = DeepCharcoal)
+                            }
+                        }
+                    }
+
+                    if (uiState.data.isEmpty()) {
+                        item { EmptyNotificationState() }
+                    } else {
+                        items(uiState.data, key = { it.id }) { notification ->
+                            EliteNotificationRow(notification) {
+                                viewModel.markAsRead(notification.id)
                             }
                         }
                     }
                 }
-                is UiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = "STREAM_FAILURE: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
-                    }
+            }
+            is UiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "STREAM_FAILURE: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
                 }
             }
         }
@@ -118,7 +111,6 @@ fun EliteNotificationRow(notification: AppNotification, onClick: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Unread Pulse
             if (!notification.isRead) {
                 Box(
                     modifier = Modifier
@@ -172,7 +164,7 @@ fun EliteNotificationRow(notification: AppNotification, onClick: () -> Unit) {
 @Composable
 fun EmptyNotificationState() {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

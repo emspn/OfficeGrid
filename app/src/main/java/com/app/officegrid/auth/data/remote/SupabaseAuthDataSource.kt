@@ -19,15 +19,28 @@ class SupabaseAuthDataSource @Inject constructor(
     private val postgrest: Postgrest?
 ) {
     suspend fun login(email: String, password: String): UserInfo {
-        val authPlugin = auth ?: throw Exception("Auth not initialized")
+        val authPlugin = auth ?: throw Exception("Supabase not initialized. Check your internet connection.")
         try {
+            android.util.Log.d("SupabaseAuth", "Attempting login for: $email")
             authPlugin.signInWith(Email) {
                 this.email = email
                 this.password = password
             }
-            return authPlugin.currentUserOrNull() ?: throw Exception("Login failed")
+            val user = authPlugin.currentUserOrNull()
+                ?: throw Exception("Login failed. Please check your credentials.")
+            android.util.Log.d("SupabaseAuth", "Login successful for: $email")
+            return user
         } catch (e: Exception) {
-            throw Exception(cleanErrorMessage(e.message))
+            android.util.Log.e("SupabaseAuth", "Login failed: ${e.message}", e)
+            when {
+                e.message?.contains("timeout", ignoreCase = true) == true -> {
+                    throw Exception("Connection timeout. Please check your internet connection and try again.")
+                }
+                e.message?.contains("Invalid", ignoreCase = true) == true -> {
+                    throw Exception("Invalid email or password")
+                }
+                else -> throw Exception(cleanErrorMessage(e.message))
+            }
         }
     }
 
@@ -54,40 +67,50 @@ class SupabaseAuthDataSource @Inject constructor(
         orgName: String? = null,
         orgType: String? = null
     ): UserInfo {
-        val authPlugin = auth ?: throw Exception("Supabase failure")
-        val db = postgrest ?: throw Exception("Database failure")
+        val authPlugin = auth ?: throw Exception("Supabase not initialized. Check your internet connection.")
+        val db = postgrest ?: throw Exception("Database not initialized. Check your internet connection.")
         val sanitizedId = companyId.trim().uppercase()
+        val isApproved = role == "ADMIN"
         
         try {
-            // 1. PRE-FLIGHT CHECK: For Admins, ensure ID is UNIQUE
+            android.util.Log.d("SupabaseAuth", "Starting signup for $email, role: $role")
+
+            // 1. PRE-FLIGHT CHECK
             if (role == "ADMIN") {
+                android.util.Log.d("SupabaseAuth", "Checking if company ID exists: $sanitizedId")
                 if (isCompanyIdValid(sanitizedId)) {
                     throw Exception("ORG_ID_ALREADY_EXISTS")
                 }
-            }
-
-            // 2. PRE-FLIGHT CHECK: For Employees, ensure ID EXISTS
-            if (role == "EMPLOYEE") {
+            } else if (role == "EMPLOYEE") {
+                android.util.Log.d("SupabaseAuth", "Validating company ID: $sanitizedId")
                 if (!isCompanyIdValid(sanitizedId)) {
                     throw Exception("INVALID_ORG_ID")
                 }
             }
 
-            // 3. AUTH_INITIALIZATION
-            authPlugin.signUpWith(Email) {
-                this.email = email
-                this.password = password
-                data = buildJsonObject {
-                    put("role", role)
-                    put("company_id", sanitizedId)
-                    put("full_name", fullName)
-                    orgName?.let { put("organisation_name", it) }
+            // 2. AUTH_INITIALIZATION (Auth Service)
+            android.util.Log.d("SupabaseAuth", "Creating auth account...")
+            try {
+                authPlugin.signUpWith(Email) {
+                    this.email = email
+                    this.password = password
+                    data = buildJsonObject {
+                        put("role", role)
+                        put("company_id", sanitizedId)
+                        put("full_name", fullName)
+                        put("is_approved", isApproved)
+                        orgName?.let { put("organisation_name", it) }
+                    }
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("SupabaseAuth", "Auth signup failed: ${e.message}", e)
+                throw Exception("Connection timeout. Please check your internet and try again.")
             }
 
             val user = authPlugin.currentUserOrNull() ?: throw Exception("IDENTITY_FAILURE")
+            android.util.Log.d("SupabaseAuth", "Auth account created: ${user.id}")
 
-            // 4. WORKSPACE_REGISTRATION
+            // 3. WORKSPACE_REGISTRATION (Only for Admins)
             if (role == "ADMIN" && orgName != null && orgType != null) {
                 try {
                     db.from("organisations").insert(
@@ -99,17 +122,27 @@ class SupabaseAuthDataSource @Inject constructor(
                         }
                     )
                 } catch (e: Exception) {
-                    // CRITICAL: Cleanup user if DB insert fails
-                    authPlugin.signOut()
+                    // Cleanup if DB fails to keep Auth/DB in sync
+                    authPlugin.signOut() 
                     throw Exception("WORKSPACE_SETUP_FAILURE: ${e.message}")
                 }
             }
 
-            // 5. FINAL_NODE_LINKING
-            db.from("employees").update(
-                buildJsonObject { put("company_id", sanitizedId) }
-            ) {
-                filter { eq("id", user.id) }
+            // 4. PROFILE_UPSERT (Link Auth User to Database Profile)
+            try {
+                db.from("employees").upsert(
+                    buildJsonObject {
+                        put("id", user.id)
+                        put("email", email)
+                        put("name", fullName)  // Changed from full_name to name
+                        put("role", role)
+                        put("company_id", sanitizedId)
+                        put("is_approved", isApproved)
+                    }
+                )
+            } catch (e: Exception) {
+                // If profile upsert fails, don't block signup - trigger will handle it
+                android.util.Log.e("SupabaseAuth", "Profile upsert failed: ${e.message}")
             }
 
             return user

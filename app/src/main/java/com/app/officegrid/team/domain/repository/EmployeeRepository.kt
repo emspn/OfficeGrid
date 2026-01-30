@@ -8,4 +8,5 @@ interface EmployeeRepository {
     fun getEmployees(companyId: String): Flow<List<Employee>>
     suspend fun syncEmployees(companyId: String): Result<Unit>
     suspend fun updateEmployeeStatus(employeeId: String, status: EmployeeStatus): Result<Unit>
+    suspend fun deleteEmployee(employeeId: String): Result<Unit>
 }

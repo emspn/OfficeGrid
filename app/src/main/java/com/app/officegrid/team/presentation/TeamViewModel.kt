@@ -59,11 +59,47 @@ class TeamViewModel @Inject constructor(
 
     fun approveEmployee(employeeId: String) {
         viewModelScope.launch {
-            repository.updateEmployeeStatus(employeeId, EmployeeStatus.APPROVED)
+            _state.update { it.copy(isLoading = true, error = null, successMessage = null) }
+            try {
+                val result = repository.updateEmployeeStatus(employeeId, EmployeeStatus.APPROVED)
+                if (result.isSuccess) {
+                    _state.update { it.copy(isLoading = false, successMessage = "Employee approved successfully") }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.exceptionOrNull()?.message ?: "Failed to approve employee"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Unknown error occurred") }
+            }
         }
     }
 
     fun rejectEmployee(employeeId: String) {
-        // Future: Logic to delete the employee record or mark as REJECTED
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null, successMessage = null) }
+            try {
+                val result = repository.deleteEmployee(employeeId)
+                if (result.isSuccess) {
+                    _state.update { it.copy(isLoading = false, successMessage = "Employee request rejected") }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.exceptionOrNull()?.message ?: "Failed to reject employee"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Unknown error occurred") }
+            }
+        }
+    }
+
+    fun clearMessages() {
+        _state.update { it.copy(successMessage = null, error = null) }
     }
 }

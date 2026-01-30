@@ -14,16 +14,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.profile.presentation.ProfileViewModel
-import com.app.officegrid.ui.theme.PrimaryModern
-import com.app.officegrid.ui.theme.Slate900
+import com.app.officegrid.ui.theme.*
 
 @Composable
 fun WaitingApprovalScreen(
@@ -40,17 +39,9 @@ fun WaitingApprovalScreen(
         label = "rotation"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
-                        MaterialTheme.colorScheme.background
-                    )
-                )
-            )
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = WarmBackground
     ) {
         Column(
             modifier = Modifier
@@ -59,85 +50,106 @@ fun WaitingApprovalScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Animated Icon Container
+            // Technical Status Indicator
             Surface(
-                modifier = Modifier.size(120.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                shape = CircleShape
+                modifier = Modifier.size(100.dp),
+                color = Color.White,
+                shape = CircleShape,
+                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.HourglassEmpty,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(40.dp)
                             .rotate(rotation),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = DeepCharcoal
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(48.dp))
             
             Text(
-                text = "Account Pending",
-                style = MaterialTheme.typography.displaySmall.copy(fontSize = 28.sp),
-                color = Slate900,
+                text = "NODE_ACCESS_PENDING",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = DeepCharcoal,
                 textAlign = TextAlign.Center
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Your request is being reviewed by the organisation admin. You'll get access as soon as you are approved.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "SYSTEM_VERIFICATION_IN_PROGRESS. ACCESS_GRANTED_UPON_ADMIN_AUTHORIZATION.",
+                style = MaterialTheme.typography.labelSmall,
+                color = StoneGray,
                 textAlign = TextAlign.Center,
-                lineHeight = 26.sp
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(56.dp))
 
-            // Action Card
-            Card(
+            // Operational Controls
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Need to check again?",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { /* Refresh status logic */ },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryModern)
+                Surface(
+                    onClick = { /* Refresh logic */ },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Refresh Status", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp), tint = DeepCharcoal)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "SYNCHRONIZE_STATUS", 
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = DeepCharcoal
+                        )
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedButton(
-                        onClick = { viewModel.logout() },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                }
+                
+                Surface(
+                    onClick = { viewModel.logout() },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sign Out", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp), tint = ProfessionalError)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "TERMINATE_SESSION", 
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = ProfessionalError
+                        )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                "STATION_ID: ${System.currentTimeMillis().toString(36).uppercase()}",
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                color = WarmBorder
+            )
         }
     }
 }

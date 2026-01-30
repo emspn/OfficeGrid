@@ -17,7 +17,10 @@ sealed class Screen(val route: String) {
     object AdminTeam : Screen("admin_team")
     object AdminProfile : Screen("admin_profile")
     object AdminAuditLogs : Screen("admin_audit_logs")
-    
+    object AdminAnalytics : Screen("admin_analytics")
+    object AdminSettings : Screen("admin_settings")
+    object OrganizationSettings : Screen("organization_settings")
+
     // Employee specific
     object EmployeeTasks : Screen("employee_tasks")
     object EmployeeProfile : Screen("employee_profile")
