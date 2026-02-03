@@ -7,6 +7,7 @@ import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
 import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.ui.UiState
 import com.app.officegrid.core.ui.asUiState
+import com.app.officegrid.tasks.domain.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ data class ProfileData(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val sessionManager: SessionManager,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase
+    private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val taskRepository: TaskRepository
 ) : ViewModel() {
 
     val state: StateFlow<UiState<ProfileData?>> = getCurrentUserUseCase()
@@ -51,6 +53,8 @@ class ProfileViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
+            // Clear local task data before logging out
+            taskRepository.clearLocalData()
             authRepository.logout()
         }
     }

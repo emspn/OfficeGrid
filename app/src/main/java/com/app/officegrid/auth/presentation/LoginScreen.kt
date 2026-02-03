@@ -57,9 +57,9 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                text = "OFFICE_GRID",
+                text = "OfficeGrid",
                 style = MaterialTheme.typography.displaySmall.copy(
-                    letterSpacing = 1.5.sp,
+                    letterSpacing = 1.sp,
                     fontWeight = FontWeight.Black,
                     fontSize = 24.sp
                 ),
@@ -69,7 +69,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Enterprise Workspace Portal",
+                text = "Welcome back",
                 style = MaterialTheme.typography.labelSmall,
                 color = StoneGray
             )
@@ -78,12 +78,12 @@ fun LoginScreen(
 
             // Professional Inputs
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text("EMAIL_ADDRESS", style = MaterialTheme.typography.labelSmall, color = MutedSlate)
+                Text("Email Address", style = MaterialTheme.typography.labelSmall, color = MutedSlate)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = email,
                     onValueChange = viewModel::onEmailChange,
-                    placeholder = { Text("user@company.com", style = MaterialTheme.typography.bodyMedium.copy(color = StoneGray)) },
+                    placeholder = { Text("you@company.com", style = MaterialTheme.typography.bodyMedium.copy(color = StoneGray)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     enabled = !state.isLoading,
@@ -95,12 +95,12 @@ fun LoginScreen(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White
                     ),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+                    textStyle = MaterialTheme.typography.bodyMedium
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Text("PASSWORD", style = MaterialTheme.typography.labelSmall, color = MutedSlate)
+                Text("Password", style = MaterialTheme.typography.labelSmall, color = MutedSlate)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = password,
@@ -122,7 +122,7 @@ fun LoginScreen(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White
                     ),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+                    textStyle = MaterialTheme.typography.bodyMedium
                 )
             }
 
@@ -137,7 +137,7 @@ fun LoginScreen(
                     shape = RoundedCornerShape(2.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DeepCharcoal)
                 ) {
-                    Text("SIGN_IN", style = MaterialTheme.typography.labelMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Log In", style = MaterialTheme.typography.labelMedium, color = Color.White, fontWeight = FontWeight.Bold)
                 }
                 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -148,7 +148,7 @@ fun LoginScreen(
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
-                        "Request Access Credentials",
+                        "Don't have an account? Sign Up",
                         style = MaterialTheme.typography.labelMedium,
                         color = MutedSlate
                     )
@@ -158,7 +158,7 @@ fun LoginScreen(
             state.error?.let {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "AUTH_FAILURE: $it",
+                    text = it,
                     color = ProfessionalError,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 8.dp)
@@ -168,10 +168,11 @@ fun LoginScreen(
             Spacer(modifier = Modifier.weight(1.5f))
             
             Text(
-                "OFFICE_GRID // KERNEL v1.2.4",
+                "OfficeGrid v1.0.0",
                 style = MaterialTheme.typography.labelSmall,
                 color = WarmBorder
             )
         }
     }
 }
+

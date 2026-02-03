@@ -1,70 +1,80 @@
 package com.app.officegrid.core.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import com.app.officegrid.core.common.presentation.NotificationViewModel
+import com.app.officegrid.core.common.presentation.NotificationScreen
+import com.app.officegrid.employee.presentation.join_workspace.JoinWorkspaceDialog
+import com.app.officegrid.employee.presentation.workspace_list.WorkspaceListScreen
+import com.app.officegrid.profile.presentation.EmployeeProfileScreen
+import com.app.officegrid.settings.presentation.EmployeeSettingsScreen
 import com.app.officegrid.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeMainScreen(
-    notificationViewModel: NotificationViewModel = hiltViewModel()
+    viewModel: com.app.officegrid.employee.presentation.workspace_list.WorkspaceViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    notificationViewModel: NotificationViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    var showJoinDialog by remember { mutableStateOf(false) }
     val unreadNotifications by notificationViewModel.unreadCount.collectAsState()
 
-    val items = listOf(
-        NavigationItem("ASSIGNMENTS", Screen.EmployeeTasks.route, Icons.AutoMirrored.Filled.Assignment),
-        NavigationItem("DASHBOARD", Screen.AdminDashboard.route, Icons.Default.GridView),
-        NavigationItem("SYSTEM_PROFILE", Screen.EmployeeProfile.route, Icons.Default.AccountCircle)
-    )
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    val currentRoute = currentDestination?.route
-    val isDetailScreen = currentRoute in listOf(
-        Screen.TaskDetail.route,
-        Screen.Notifications.route
-    )
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is com.app.officegrid.employee.presentation.workspace_list.WorkspaceEvent.Success -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is com.app.officegrid.employee.presentation.workspace_list.WorkspaceEvent.Error -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
+
+    val showBottomBar = currentDestination?.route in listOf("workspaces", "profile")
 
     Scaffold(
         containerColor = WarmBackground,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            if (!isDetailScreen) {
+            if (showBottomBar) {
                 CenterAlignedTopAppBar(
-                    title = { 
+                    title = {
                         Text(
-                            "OFFICE_GRID // NODE", 
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                letterSpacing = 2.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
+                            "OfficeGrid",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                letterSpacing = 1.sp,
                                 fontWeight = FontWeight.Black
                             ),
                             color = DeepCharcoal
-                        ) 
+                        )
                     },
                     actions = {
-                        IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
+                        IconButton(onClick = { navController.navigate("notifications") }) {
                             BadgedBox(
-                                badge = { 
+                                badge = {
                                     if (unreadNotifications > 0) {
                                         Badge(
                                             containerColor = ProfessionalError,
@@ -75,7 +85,12 @@ fun EmployeeMainScreen(
                                     }
                                 }
                             ) {
-                                Icon(Icons.Default.Notifications, null, tint = DeepCharcoal, modifier = Modifier.size(20.dp))
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = "Notifications",
+                                    tint = DeepCharcoal,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         }
                     },
@@ -85,62 +100,131 @@ fun EmployeeMainScreen(
             }
         },
         bottomBar = {
-            Surface(
-                color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
-            ) {
-                NavigationBar(
-                    containerColor = Color.White,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+            if (showBottomBar) {
+                Surface(
+                    color = Color.White,
+                    border = BorderStroke(1.dp, WarmBorder)
                 ) {
-                    items.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                    NavigationBar(
+                        containerColor = Color.White,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                    ) {
+                        val workspacesSelected = currentDestination?.hierarchy?.any {
+                            it.route == "workspaces"
+                        } == true
+
                         NavigationBarItem(
-                            icon = { 
-                                Icon(
-                                    item.icon, 
-                                    null, 
-                                    modifier = Modifier.size(22.dp),
-                                    tint = if (selected) DeepCharcoal else StoneGray
-                                ) 
+                            icon = { Icon(Icons.Default.Business, contentDescription = "Workspaces", modifier = Modifier.size(22.dp)) },
+                            label = {
+                                Text("WORKSPACES", style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = if (workspacesSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 10.sp
+                                ))
                             },
-                            label = { 
-                                Text(
-                                    item.title, 
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 9.sp, 
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                                    ),
-                                    color = if (selected) DeepCharcoal else StoneGray
-                                ) 
-                            },
-                            selected = selected,
+                            selected = workspacesSelected,
                             onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
+                                navController.navigate("workspaces") {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = Color.Transparent,
                                 selectedIconColor = DeepCharcoal,
                                 unselectedIconColor = StoneGray,
                                 selectedTextColor = DeepCharcoal,
-                                unselectedTextColor = StoneGray
+                                unselectedTextColor = StoneGray,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+
+                        val profileSelected = currentDestination?.hierarchy?.any {
+                            it.route == "profile"
+                        } == true
+
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", modifier = Modifier.size(22.dp)) },
+                            label = {
+                                Text("PROFILE", style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = if (profileSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 10.sp
+                                ))
+                            },
+                            selected = profileSelected,
+                            onClick = {
+                                navController.navigate("profile") {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = DeepCharcoal,
+                                unselectedIconColor = StoneGray,
+                                selectedTextColor = DeepCharcoal,
+                                unselectedTextColor = StoneGray,
+                                indicatorColor = Color.Transparent
                             )
                         )
                     }
                 }
             }
         }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            EmployeeNavGraph(navController = navController)
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = "workspaces",
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable("workspaces") {
+                WorkspaceListScreen(
+                    onWorkspaceClick = { workspaceId ->
+                        navController.navigate("workspace_detail/$workspaceId")
+                    },
+                    onAddWorkspace = { showJoinDialog = true },
+                    onNavigateToProfile = { navController.navigate("profile") },
+                    viewModel = viewModel
+                )
+            }
+
+            composable(
+                route = "workspace_detail/{workspaceId}",
+                arguments = listOf(navArgument("workspaceId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val workspaceId = backStackEntry.arguments?.getString("workspaceId") ?: ""
+                com.app.officegrid.employee.presentation.workspace_detail.WorkspaceDetailScreen(
+                    workspaceId = workspaceId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable("profile") {
+                EmployeeProfileScreen(
+                    onNavigateToSettings = { navController.navigate("settings") }
+                )
+            }
+
+            composable("settings") {
+                EmployeeSettingsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            // ✅ FIXED: Added notifications route to prevent crash
+            composable("notifications") {
+                NotificationScreen(onNavigateBack = { navController.popBackStack() })
+            }
         }
+    }
+
+    if (showJoinDialog) {
+        JoinWorkspaceDialog(
+            onDismiss = { showJoinDialog = false },
+            onJoin = { code ->
+                viewModel.joinWorkspace(code)
+                showJoinDialog = false
+            }
+        )
     }
 }

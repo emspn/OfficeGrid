@@ -117,7 +117,9 @@ class TaskListViewModel @Inject constructor(
     }
 
     fun onTaskClick(taskId: String) {
-        // Handle task click
+        viewModelScope.launch {
+            _events.send(UiEvent.Navigate("task_detail/$taskId"))
+        }
     }
 
     fun deleteTask(taskId: String) {
@@ -151,3 +153,4 @@ class TaskListViewModel @Inject constructor(
         }
     }
 }
+

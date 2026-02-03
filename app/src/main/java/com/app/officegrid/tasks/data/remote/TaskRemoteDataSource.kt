@@ -12,3 +12,4 @@ interface TaskRemoteDataSource {
     suspend fun deleteTask(taskId: String)
     suspend fun getTaskById(taskId: String): TaskDto?
 }
+

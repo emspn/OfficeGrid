@@ -2,6 +2,7 @@ package com.app.officegrid.organization.presentation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.ui.UiState
+import com.app.officegrid.core.ui.AdminSectionHeader
+import com.app.officegrid.core.ui.AdminTopBar
 import com.app.officegrid.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,49 +32,34 @@ fun OrganizationSettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "ORGANIZATION",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            letterSpacing = 2.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Black
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = DeepCharcoal
-                )
+            AdminTopBar(
+                title = "ORGANIZATION_SPECIFICATIONS",
+                onBackClick = onNavigateBack
             )
         },
         containerColor = WarmBackground
     ) { padding ->
-        when (val state = orgState) {
-            is UiState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = DeepCharcoal)
+        Box(modifier = Modifier.padding(padding)) {
+            when (val state = orgState) {
+                is UiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
+                    }
                 }
-            }
-            is UiState.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Error: ${state.message}", color = ProfessionalError)
+                is UiState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("CONNECTION_ERROR: ${state.message}", color = ProfessionalError, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
-            }
-            is UiState.Success -> {
-                OrganizationContent(data = state.data, padding = padding)
+                is UiState.Success -> {
+                    OrganizationContent(data = state.data)
+                }
             }
         }
     }
@@ -79,56 +67,55 @@ fun OrganizationSettingsScreen(
 
 @Composable
 private fun OrganizationContent(
-    data: OrganizationData,
-    padding: PaddingValues
+    data: OrganizationData
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(padding)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // Company Info Section
-        SectionHeader("COMPANY_INFORMATION")
-        Spacer(Modifier.height(16.dp))
-
-        OrganizationTextField(
-            label = "Company Name",
-            value = data.companyName,
-            onValueChange = { },
-            icon = Icons.Default.Business,
-            enabled = false,
-            helperText = "Company name set during registration"
+        AdminSectionHeader(
+            title = "CORE_IDENTITY",
+            subtitle = "Verified organizational identifiers"
         )
 
-        Spacer(Modifier.height(12.dp))
-
-        OrganizationTextField(
-            label = "Company ID",
-            value = data.companyId,
-            onValueChange = { },
-            icon = Icons.Default.Badge,
-            enabled = false,
-            helperText = "This is your unique organization identifier"
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        OrganizationTextField(
-            label = "Industry",
-            value = data.industry,
-            onValueChange = { },
-            icon = Icons.Default.Category,
-            enabled = false,
-            helperText = "Industry classification"
-        )
-
-        Spacer(Modifier.height(32.dp))
+        Surface(
+            color = Color.White,
+            shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+        ) {
+            Column {
+                OrganizationTextField(
+                    label = "NAME",
+                    value = data.companyName,
+                    icon = Icons.Default.Business,
+                    enabled = false
+                )
+                HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
+                OrganizationTextField(
+                    label = "Workspace ID",
+                    value = data.companyId,
+                    icon = Icons.Default.Badge,
+                    enabled = false
+                )
+                HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
+                OrganizationTextField(
+                    label = "SECTOR",
+                    value = data.industry,
+                    icon = Icons.Default.Category,
+                    enabled = false
+                )
+            }
+        }
 
         // Plan & Limits
-        SectionHeader("SUBSCRIPTION_&_LIMITS")
-        Spacer(Modifier.height(16.dp))
+        AdminSectionHeader(
+            title = "RESOURCE_ALLOCATION",
+            subtitle = "Operational limits and subscription status"
+        )
 
         PlanInfoCard(
             planName = data.planName,
@@ -138,16 +125,16 @@ private fun OrganizationContent(
             storageLimit = data.storageLimit
         )
 
-        Spacer(Modifier.height(32.dp))
-
         // Danger Zone
-        SectionHeader("DANGER_ZONE", color = ProfessionalError)
-        Spacer(Modifier.height(16.dp))
+        AdminSectionHeader(
+            title = "TERMINATION_ZONE",
+            subtitle = "Irreversible organizational actions"
+        )
 
         DangerActionCard(
-            title = "Delete Organization",
-            description = "Permanently delete this organization and all associated data. This action cannot be undone.",
-            actionLabel = "DELETE",
+            title = "DECOMMISSION_ORGANIZATION",
+            description = "Permanently purge all data and node access. THIS_ACTION_IS_FINAL.",
+            actionLabel = "PURGE",
             onAction = { /* Show confirmation dialog */ }
         )
 
@@ -156,53 +143,27 @@ private fun OrganizationContent(
 }
 
 @Composable
-private fun SectionHeader(title: String, color: Color = MutedSlate) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelSmall.copy(
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-        ),
-        color = color
-    )
-}
-
-@Composable
 private fun OrganizationTextField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    enabled: Boolean = true,
-    helperText: String? = null
+    enabled: Boolean = true
 ) {
-    Column {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            leadingIcon = {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            },
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                disabledContainerColor = AccentGray,
-                focusedBorderColor = DeepCharcoal,
-                unfocusedBorderColor = WarmBorder
-            ),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
-        )
-
-        if (helperText != null) {
-            Spacer(Modifier.height(4.dp))
+    Row(
+        modifier = Modifier.padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = DeepCharcoal)
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = StoneGray)
             Text(
-                text = helperText,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                color = StoneGray,
-                modifier = Modifier.padding(start = 16.dp)
+                value.uppercase(),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = if (enabled) DeepCharcoal else Gray500
             )
         }
     }
@@ -219,7 +180,7 @@ private fun PlanInfoCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -230,45 +191,35 @@ private fun PlanInfoCard(
             ) {
                 Column {
                     Text(
-                        planName,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        planName.uppercase(),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
                         color = DeepCharcoal
                     )
                     Text(
-                        "Active subscription",
+                        "STATUS: ACTIVE_OPERATIONAL_TIER",
                         style = MaterialTheme.typography.labelSmall,
-                        color = StoneGray
-                    )
-                }
-
-                Surface(
-                    color = ProfessionalSuccess.copy(alpha = 0.1f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        "ACTIVE",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = ProfessionalSuccess
                     )
                 }
+
+                Icon(Icons.Default.Verified, contentDescription = null, tint = ProfessionalSuccess, modifier = Modifier.size(24.dp))
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
             // Employees Usage
             PlanMetricRow(
-                label = "Employees",
+                label = "Team Size",
                 value = "$currentEmployees / $maxEmployees",
                 progress = if (maxEmployees > 0) currentEmployees.toFloat() / maxEmployees.toFloat() else 0f,
                 icon = Icons.Default.People
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
             // Storage Usage
             PlanMetricRow(
-                label = "Storage",
+                label = "DATA_STORAGE",
                 value = "$storageUsed / $storageLimit",
                 progress = 0.24f,
                 icon = Icons.Default.Storage
@@ -294,16 +245,16 @@ private fun PlanMetricRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(icon, null, modifier = Modifier.size(16.dp), tint = StoneGray)
+                Icon(icon, null, modifier = Modifier.size(14.dp), tint = StoneGray)
                 Text(
                     label,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = DeepCharcoal
                 )
             }
             Text(
                 value,
-                style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                 color = StoneGray
             )
         }
@@ -314,11 +265,11 @@ private fun PlanMetricRow(
             progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp),
+                .height(4.dp),
             color = when {
                 progress >= 0.8f -> ProfessionalError
                 progress >= 0.6f -> ProfessionalWarning
-                else -> ProfessionalSuccess
+                else -> DeepCharcoal
             },
             trackColor = WarmBorder,
             strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
@@ -335,9 +286,9 @@ private fun DangerActionCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = ProfessionalError.copy(alpha = 0.05f),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, ProfessionalError.copy(alpha = 0.3f))
+        color = Color.White,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, ProfessionalError.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -355,26 +306,25 @@ private fun DangerActionCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black),
                     color = ProfessionalError
                 )
                 Text(
                     description,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                     color = StoneGray
                 )
             }
 
             Spacer(Modifier.width(12.dp))
 
-            OutlinedButton(
+            Button(
                 onClick = onAction,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = ProfessionalError
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ProfessionalError)
+                colors = ButtonDefaults.buttonColors(containerColor = ProfessionalError),
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                Text(actionLabel, style = MaterialTheme.typography.labelSmall)
+                Text(actionLabel, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black), color = Color.White)
             }
         }
     }

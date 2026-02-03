@@ -7,11 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,11 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.ui.UiEvent
+import com.app.officegrid.core.ui.AdminTopBar
+import com.app.officegrid.core.ui.AdminSectionHeader
 import com.app.officegrid.tasks.domain.model.TaskPriority
 import com.app.officegrid.ui.theme.*
 import kotlinx.coroutines.launch
 
-@Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTaskScreen(
@@ -45,25 +42,34 @@ fun CreateTaskScreen(
     var priorityExpanded by remember { mutableStateOf(false) }
     var employeeExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var showTemplateSelector by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
+    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // ⚡ NEW: Refresh employees on EVERY screen resume
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                android.util.Log.d("CreateTaskScreen", "⚡ Screen resumed - refreshing employees")
+                viewModel.refreshEmployees()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is UiEvent.ShowMessage -> {
-                    // Launch snackbar in a separate coroutine so it doesn't block navigation
                     scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = event.message,
-                            duration = SnackbarDuration.Short
-                        )
+                        snackbarHostState.showSnackbar(event.message)
                     }
                 }
                 is UiEvent.Navigate -> {
-                    // Navigate back immediately
                     onNavigateBack()
                 }
                 else -> Unit
@@ -71,358 +77,220 @@ fun CreateTaskScreen(
         }
     }
 
-    // Date Picker Dialog
-    if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = dueDate
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { selectedDate ->
-                        viewModel.onDueDateChange(selectedDate)
-                    }
-                    showDatePicker = false
-                }) {
-                    Text("CONFIRM", style = MaterialTheme.typography.labelSmall, color = DeepCharcoal)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("CANCEL", style = MaterialTheme.typography.labelSmall, color = StoneGray)
-                }
-            },
-            colors = DatePickerDefaults.colors(
-                containerColor = WarmBackground
-            )
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = WarmBackground,
-                    selectedDayContainerColor = DeepCharcoal,
-                    todayDateBorderColor = DeepCharcoal
-                )
+    Scaffold(
+        containerColor = WarmBackground,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            AdminTopBar(
+                title = "Create Task",
+                onBackClick = onNavigateBack
             )
         }
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = WarmBackground
-    ) { innerPadding ->
-        Surface(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            color = WarmBackground
-        ) {
+    ) { padding ->
+        Box(modifier = Modifier.padding(padding)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Reclaimed Header Space with Back Navigation
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                AdminSectionHeader(
+                    title = "Task Details",
+                    subtitle = "Enter task information and assign to team member"
+                )
+
+                // 1. Core Identifiers Card
+                Surface(
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
                 ) {
-                    IconButton(onClick = onNavigateBack, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gray900)
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("TASK_INITIALIZATION", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
-                        Text("UNIT_ALLOCATION_INTERFACE", style = MaterialTheme.typography.labelSmall, color = StoneGray)
-                    }
-
-                    // Use Template Button
-                    OutlinedButton(
-                        onClick = { showTemplateSelector = true },
-                        shape = RoundedCornerShape(4.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = DeepCharcoal
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Apps,
-                            contentDescription = "Templates",
-                            modifier = Modifier.size(16.dp)
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = viewModel::onTitleChange,
+                            placeholder = { Text("Assignment Title") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
+                            ),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            singleLine = true
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Templates",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold
-                            )
+                        HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = viewModel::onDescriptionChange,
+                            placeholder = { Text("Detailed Operational Specifications...") },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
 
-                // Template Selector Dialog
-                if (showTemplateSelector) {
-                    com.app.officegrid.tasks.presentation.templates.TaskTemplateSelectionScreen(
-                        onTemplateSelected = { template ->
-                            showTemplateSelector = false
-                            // Create tasks from template
-                            viewModel.createTasksFromTemplate(template)
-                        },
-                        onDismiss = { showTemplateSelector = false }
-                    )
-                }
-
-                // Technical Ledger Section: Core Identity
-                EliteFormSection(label = "CORE_IDENTIFIER") {
-                    EliteTextField(
-                        value = title,
-                        onValueChange = viewModel::onTitleChange,
-                        placeholder = "ASSIGNMENT_TITLE",
-                        singleLine = true,
-                        enabled = !state.isLoading
-                    )
-                    Spacer(modifier = Modifier.height(1.dp))
-                    EliteTextField(
-                        value = description,
-                        onValueChange = viewModel::onDescriptionChange,
-                        placeholder = "OPERATIONAL_SPECIFICATIONS",
-                        minLines = 4,
-                        enabled = !state.isLoading
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Technical Ledger Section: Deployment Metadata
-                EliteFormSection(label = "DEPLOYMENT_METADATA") {
-                    // Priority Selector
-                    EliteDropdown(
-                        label = "PRIORITY_LEVEL",
-                        value = priority.name,
-                        icon = Icons.Default.Flag,
-                        iconColor = when(priority) {
-                            TaskPriority.HIGH -> ProfessionalError
-                            TaskPriority.MEDIUM -> ProfessionalWarning
-                            else -> DeepCharcoal
-                        },
-                        expanded = priorityExpanded,
-                        onExpandedChange = { priorityExpanded = it },
-                        enabled = !state.isLoading
-                    ) {
-                        TaskPriority.entries.forEach { p ->
-                            DropdownMenuItem(
-                                text = { 
-                                    Text(
-                                        p.name, 
-                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace)
-                                    ) 
-                                },
-                                onClick = {
-                                    viewModel.onPriorityChange(p)
-                                    priorityExpanded = false
-                                }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(1.dp))
-
-                    // Employee Selector
-                    val selectedEmployee = employees.find { it.id == assignedTo }
-                    EliteDropdown(
-                        label = "ASSIGNED_NODE",
-                        value = selectedEmployee?.name ?: "SELECT_OPERATIVE",
-                        icon = Icons.Default.Person,
-                        expanded = employeeExpanded,
-                        onExpandedChange = { employeeExpanded = it },
-                        enabled = !state.isLoading
-                    ) {
-                        if (employees.isEmpty()) {
-                            DropdownMenuItem(
-                                text = { Text("NO_ACTIVE_OPERATIVES", style = MaterialTheme.typography.labelSmall) },
-                                onClick = { employeeExpanded = false }
-                            )
-                        } else {
-                            employees.forEach { emp ->
-                                DropdownMenuItem(
-                                    text = { 
-                                        Column {
-                                            Text(emp.name.uppercase(), style = MaterialTheme.typography.labelMedium)
-                                            Text(emp.email, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = StoneGray)
-                                        }
-                                    },
-                                    onClick = {
-                                        viewModel.onAssignedToChange(emp.id)
-                                        employeeExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(1.dp))
-
-                    // Due Date Selector
-                    val dateFormat = remember { java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()) }
-                    val formattedDate = remember(dueDate) { dateFormat.format(java.util.Date(dueDate)) }
-
+                // 2. Deployment Metadata
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Settings", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
                     Surface(
-                        onClick = { showDatePicker = true },
-                        modifier = Modifier.fillMaxWidth(),
                         color = Color.White,
-                        enabled = !state.isLoading
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(16.dp), tint = DeepCharcoal)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("DUE_DATE", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = StoneGray)
-                                Text(formattedDate.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace))
+                        Column {
+                            // Priority - Properly Anchored
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                AdminFormRow(
+                                    label = "Priority",
+                                    value = priority.name,
+                                    icon = Icons.Default.Flag,
+                                    onClick = { priorityExpanded = true }
+                                )
+                                DropdownMenu(
+                                    expanded = priorityExpanded,
+                                    onDismissRequest = { priorityExpanded = false },
+                                    modifier = Modifier.background(Color.White).width(200.dp)
+                                ) {
+                                    TaskPriority.entries.forEach { p ->
+                                        DropdownMenuItem(
+                                            text = { Text(p.name, style = MaterialTheme.typography.labelMedium) },
+                                            onClick = {
+                                                viewModel.onPriorityChange(p)
+                                                priorityExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
                             }
+                            
+                            HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
+                            
+                            // Operative - Properly Anchored
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                val selectedEmployee = employees.find { it.id == assignedTo }
+                                AdminFormRow(
+                                    label = "Assign To",
+                                    value = selectedEmployee?.name ?: "Select Team Member",
+                                    icon = Icons.Default.Person,
+                                    onClick = { employeeExpanded = true }
+                                )
+                                DropdownMenu(
+                                    expanded = employeeExpanded,
+                                    onDismissRequest = { employeeExpanded = false },
+                                    modifier = Modifier.background(Color.White).fillMaxWidth(0.8f)
+                                ) {
+                                    if (employees.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text("No team members available", style = MaterialTheme.typography.labelSmall) },
+                                            onClick = { employeeExpanded = false }
+                                        )
+                                    } else {
+                                        employees.forEach { emp ->
+                                            DropdownMenuItem(
+                                                text = { 
+                                                    Column {
+                                                        Text(emp.name.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                                                        Text(emp.email, style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                                                    }
+                                                },
+                                                onClick = {
+                                                    viewModel.onAssignedToChange(emp.id)
+                                                    employeeExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
+
+                            // Date
+                            val dateFormat = remember { java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()) }
+                            val formattedDate = remember(dueDate) { dateFormat.format(java.util.Date(dueDate)) }
+                            AdminFormRow(
+                                label = "Due Date",
+                                value = formattedDate,
+                                icon = Icons.Default.CalendarToday,
+                                onClick = { showDatePicker = true }
+                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(48.dp))
-
-                // Action Button
-                if (state.isLoading) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
+                // Initialize Button
+                Button(
+                    onClick = viewModel::createTask,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = DeepCharcoal),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !state.isLoading
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Create Task", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp))
                     }
-                } else {
-                    Surface(
-                        onClick = viewModel::createTask,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = DeepCharcoal,
-                        shape = RoundedCornerShape(2.dp)
-                    ) {
-                        Text(
-                            text = "INITIALIZE_TASK",
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                letterSpacing = 2.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        )
-                    }
-                }
-
-                state.error?.let {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "CONFIGURATION_ERROR: $it",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ProfessionalError,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
                 }
                 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(Modifier.height(32.dp))
+            }
+
+            // Date Picker
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = dueDate)
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { viewModel.onDueDateChange(it) }
+                            showDatePicker = false
+                        }) { Text("CONFIRM", color = DeepCharcoal) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) { Text("CANCEL", color = StoneGray) }
+                    }
+                ) {
+                    DatePicker(
+                        state = datePickerState,
+                        colors = DatePickerDefaults.colors(
+                            selectedDayContainerColor = DeepCharcoal,
+                            todayDateBorderColor = DeepCharcoal
+                        )
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun EliteFormSection(label: String, content: @Composable ColumnScope.() -> Unit) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
-                color = MutedSlate
-            )
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            content = content
-        )
-    }
-}
-
-@Composable
-fun EliteTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    enabled: Boolean = true,
-    singleLine: Boolean = false,
-    minLines: Int = 1
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodySmall, color = WarmBorder) },
-        enabled = enabled,
-        singleLine = singleLine,
-        minLines = minLines,
-        modifier = Modifier.fillMaxWidth(),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            disabledContainerColor = Color.White,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-            cursorColor = DeepCharcoal,
-            focusedTextColor = DeepCharcoal,
-            unfocusedTextColor = DeepCharcoal
-        ),
-        textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
-        shape = RoundedCornerShape(0.dp)
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EliteDropdown(
+private fun AdminFormRow(
     label: String,
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color = DeepCharcoal,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    enabled: Boolean = true,
-    content: @Composable ColumnScope.() -> Unit
+    onClick: () -> Unit
 ) {
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (enabled) onExpandedChange(it) }
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled),
-            color = Color.White,
-            border = androidx.compose.foundation.BorderStroke(0.dp, Color.Transparent)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(icon, null, modifier = Modifier.size(16.dp), tint = iconColor)
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = StoneGray)
-                    Text(value.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace))
-                }
-                Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(16.dp), tint = StoneGray)
+            Icon(icon, null, modifier = Modifier.size(18.dp), tint = DeepCharcoal)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                Text(value.uppercase(), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
             }
+            Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(18.dp), tint = StoneGray)
         }
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) },
-            modifier = Modifier.background(Color.White),
-            content = content
-        )
     }
 }

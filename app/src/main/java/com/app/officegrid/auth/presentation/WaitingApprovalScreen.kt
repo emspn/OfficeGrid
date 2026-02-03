@@ -72,7 +72,7 @@ fun WaitingApprovalScreen(
             Spacer(modifier = Modifier.height(48.dp))
             
             Text(
-                text = "NODE_ACCESS_PENDING",
+                text = "Waiting for Approval",
                 style = MaterialTheme.typography.titleLarge.copy(
                     letterSpacing = 2.sp,
                     fontWeight = FontWeight.Black,
@@ -85,7 +85,7 @@ fun WaitingApprovalScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "SYSTEM_VERIFICATION_IN_PROGRESS. ACCESS_GRANTED_UPON_ADMIN_AUTHORIZATION.",
+                text = "Your account is pending approval from the administrator. You'll get access once approved.",
                 style = MaterialTheme.typography.labelSmall,
                 color = StoneGray,
                 textAlign = TextAlign.Center,
@@ -114,7 +114,7 @@ fun WaitingApprovalScreen(
                         Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp), tint = DeepCharcoal)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            "SYNCHRONIZE_STATUS", 
+                            "Check Status",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = DeepCharcoal
                         )
@@ -135,7 +135,7 @@ fun WaitingApprovalScreen(
                         Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp), tint = ProfessionalError)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            "TERMINATE_SESSION", 
+                            "Log Out",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = ProfessionalError
                         )
@@ -146,10 +146,11 @@ fun WaitingApprovalScreen(
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                "STATION_ID: ${System.currentTimeMillis().toString(36).uppercase()}",
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                "Session: ${System.currentTimeMillis().toString(36).uppercase().take(8)}",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                 color = WarmBorder
             )
         }
     }
 }
+

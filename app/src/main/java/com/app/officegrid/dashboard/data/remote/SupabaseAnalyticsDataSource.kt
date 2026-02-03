@@ -20,10 +20,10 @@ data class EmployeeTaskCountDto(
 
 @Singleton
 class SupabaseAnalyticsDataSource @Inject constructor(
-    private val postgrest: Postgrest?
+    private val postgrest: Postgrest
 ) {
     suspend fun getGlobalTaskStats(companyId: String): List<TaskCountDto> {
-        val postgrestPlugin = postgrest ?: throw Exception("Supabase Postgrest not initialized")
+        val postgrest = postgrest ?: throw Exception("Supabase Postgrest not initialized")
         // In a real production app, we would use an RPC or a complex query.
         // For simplicity in this step, we fetch counts grouped by status.
         // Since Postgrest grouping usually requires RPC or specific select syntax:

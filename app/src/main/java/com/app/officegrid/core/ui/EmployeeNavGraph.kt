@@ -9,7 +9,7 @@ import androidx.navigation.navArgument
 import com.app.officegrid.core.common.presentation.NotificationScreen
 import com.app.officegrid.employee.presentation.dashboard.EmployeeDashboardScreen
 import com.app.officegrid.employee.presentation.tasks.EmployeeTaskListScreen
-import com.app.officegrid.profile.presentation.ProfileScreen
+import com.app.officegrid.profile.presentation.EmployeeProfileScreen
 import com.app.officegrid.tasks.presentation.task_detail.TaskDetailScreen
 
 @Composable
@@ -19,15 +19,24 @@ fun EmployeeNavGraph(navController: NavHostController) {
         startDestination = Screen.EmployeeTasks.route
     ) {
         composable(Screen.EmployeeTasks.route) {
-            EmployeeTaskListScreen(onTaskClick = { taskId ->
-                navController.navigate(Screen.TaskDetail.createRoute(taskId))
-            })
+            // Using a placeholder or passing workspaceId if available in backstack
+            EmployeeTaskListScreen(
+                workspaceId = "", 
+                onTaskClick = { taskId ->
+                    navController.navigate(Screen.TaskDetail.createRoute(taskId))
+                }
+            )
         }
+        
         composable(Screen.AdminDashboard.route) {
-            EmployeeDashboardScreen(onTaskClick = { taskId ->
-                navController.navigate(Screen.TaskDetail.createRoute(taskId))
-            })
+            EmployeeDashboardScreen(
+                workspaceId = "",
+                onTaskClick = { taskId ->
+                    navController.navigate(Screen.TaskDetail.createRoute(taskId))
+                }
+            )
         }
+
         composable(
             route = Screen.TaskDetail.route,
             arguments = listOf(navArgument("taskId") { type = NavType.StringType })
@@ -37,9 +46,13 @@ fun EmployeeNavGraph(navController: NavHostController) {
                 onNavigateToEdit = { /* Employees cannot edit tasks */ }
             )
         }
+
         composable(Screen.EmployeeProfile.route) {
-            ProfileScreen()
+            EmployeeProfileScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Notifications.route) } // Placeholder
+            )
         }
+
         composable(Screen.Notifications.route) {
             NotificationScreen(
                 onNavigateBack = { navController.popBackStack() }

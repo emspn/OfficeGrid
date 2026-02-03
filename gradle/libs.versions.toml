@@ -16,9 +16,10 @@ kotlinxSerialization = "1.7.3"
 room = "2.6.1"
 paging = "3.3.4"
 navigationCompose = "2.8.4"
-supabase = "3.0.1"
-ktor = "3.0.1"
+supabase = "3.0.2"
+ktor = "3.0.2"
 ksp = "2.0.21-1.0.27"
+ui = "1.10.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -71,6 +72,7 @@ paging-compose = { group = "androidx.paging", name = "paging-compose", version.r
 
 # Navigation
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

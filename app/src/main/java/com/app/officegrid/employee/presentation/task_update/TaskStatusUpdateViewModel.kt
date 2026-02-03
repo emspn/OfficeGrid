@@ -32,13 +32,14 @@ class TaskStatusUpdateViewModel @Inject constructor(
                     android.util.Log.d("TaskStatusUpdate", "Successfully updated task status")
                     _updateState.value = TaskUpdateState.Success(
                         message = when (newStatus) {
-                            TaskStatus.IN_PROGRESS -> "Task started successfully!"
-                            TaskStatus.DONE -> "Task completed! Great work! 🎉"
-                            TaskStatus.TODO -> "Task reopened"
+                            TaskStatus.TODO -> "📋 Task moved back to pending status."
+                            TaskStatus.IN_PROGRESS -> "✅ Task started! Keep up the great work."
+                            TaskStatus.PENDING_COMPLETION -> "⏳ Completion request submitted successfully! 🎉"
+                            TaskStatus.DONE -> "🎉 Excellent! Task completed successfully!"
                         }
                     )
                 } else {
-                    val error = result.exceptionOrNull()?.message ?: "Failed to update task status"
+                    val error = result.exceptionOrNull()?.message ?: "Unable to update task status. Please try again."
                     android.util.Log.e("TaskStatusUpdate", "Failed: $error")
                     _updateState.value = TaskUpdateState.Error(error)
                 }
@@ -60,3 +61,4 @@ sealed class TaskUpdateState {
     data class Success(val message: String) : TaskUpdateState()
     data class Error(val message: String) : TaskUpdateState()
 }
+

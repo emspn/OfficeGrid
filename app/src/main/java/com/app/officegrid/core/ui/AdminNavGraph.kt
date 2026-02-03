@@ -9,13 +9,13 @@ import androidx.navigation.navArgument
 import com.app.officegrid.core.common.presentation.AuditLogsScreen
 import com.app.officegrid.core.common.presentation.NotificationScreen
 import com.app.officegrid.dashboard.presentation.DashboardScreen
-import com.app.officegrid.profile.presentation.ProfileScreen
+import com.app.officegrid.profile.presentation.AdminProfileScreen
 import com.app.officegrid.tasks.presentation.create_task.CreateTaskScreen
 import com.app.officegrid.tasks.presentation.edit_task.EditTaskScreen
 import com.app.officegrid.tasks.presentation.task_detail.TaskDetailScreen
 import com.app.officegrid.tasks.presentation.task_list.TaskListScreen
 import com.app.officegrid.team.presentation.TeamScreen
-import com.app.officegrid.settings.presentation.SettingsScreen
+import com.app.officegrid.settings.presentation.AdminSettingsScreen
 import com.app.officegrid.organization.presentation.OrganizationSettingsScreen
 
 @Composable
@@ -28,7 +28,15 @@ fun AdminNavGraph(navController: NavHostController) {
             DashboardScreen()
         }
         composable(Screen.AdminTasks.route) {
-            TaskListScreen()
+            TaskListScreen(
+                onNavigateToCreateTask = { navController.navigate(Screen.AdminCreateTask.route) },
+                onNavigateToEditTask = { taskId ->
+                    navController.navigate(Screen.AdminEditTask.createRoute(taskId))
+                },
+                onNavigateToTaskDetail = { taskId ->
+                    navController.navigate(Screen.TaskDetail.createRoute(taskId))
+                }
+            )
         }
         composable(Screen.AdminCreateTask.route) {
             CreateTaskScreen(
@@ -58,16 +66,17 @@ fun AdminNavGraph(navController: NavHostController) {
             TeamScreen()
         }
         composable(Screen.AdminProfile.route) {
-            ProfileScreen(
+            AdminProfileScreen(
                 onNavigateToSettings = { navController.navigate(Screen.AdminSettings.route) },
-                onNavigateToOrganization = { navController.navigate(Screen.OrganizationSettings.route) }
+                onNavigateToOrganization = { navController.navigate(Screen.OrganizationSettings.route) },
+                onNavigateToAudit = { navController.navigate(Screen.AdminAuditLogs.route) }
             )
         }
         composable(Screen.AdminAuditLogs.route) {
             AuditLogsScreen()
         }
         composable(Screen.AdminSettings.route) {
-            SettingsScreen(
+            AdminSettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -78,7 +87,10 @@ fun AdminNavGraph(navController: NavHostController) {
         }
         composable(Screen.Notifications.route) {
             NotificationScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToTask = { taskId ->
+                    navController.navigate(Screen.TaskDetail.createRoute(taskId))
+                }
             )
         }
     }

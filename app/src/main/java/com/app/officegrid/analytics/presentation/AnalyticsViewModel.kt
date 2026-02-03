@@ -105,3 +105,4 @@ data class TeamMemberPerformance(
     val tasksAssigned: Int,
     val completionRate: Float
 )
+

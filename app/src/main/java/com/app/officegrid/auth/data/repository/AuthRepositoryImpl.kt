@@ -4,58 +4,23 @@ import com.app.officegrid.auth.data.remote.SupabaseAuthDataSource
 import com.app.officegrid.auth.domain.model.User
 import com.app.officegrid.auth.domain.model.UserSession
 import com.app.officegrid.auth.domain.repository.AuthRepository
-import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.common.UserRole
-import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
-    private val remoteDataSource: SupabaseAuthDataSource,
-    private val sessionManager: SessionManager
+    private val remoteDataSource: SupabaseAuthDataSource
 ) : AuthRepository {
-
-    private val scope = CoroutineScope(Dispatchers.Main)
-
-    init {
-        observeSessionStatus()
-    }
-
-    private fun observeSessionStatus() {
-        scope.launch {
-            remoteDataSource.getSessionStatus().collectLatest { status ->
-                when (status) {
-                    is SessionStatus.Authenticated -> {
-                        val user = remoteDataSource.getCurrentUserInfo()?.toDomain()
-                        user?.let { sessionManager.login(it.role, it.isApproved) }
-                    }
-                    is SessionStatus.NotAuthenticated -> {
-                        sessionManager.logout()
-                    }
-                    else -> Unit
-                }
-            }
-        }
-    }
 
     override suspend fun login(email: String, password: String): Result<UserSession> {
         return try {
             val userInfo = remoteDataSource.login(email, password)
             val user = userInfo.toDomain()
-            Result.success(
-                UserSession(
-                    user = user,
-                    token = ""
-                )
-            )
+            Result.success(UserSession(user = user, token = ""))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -96,47 +61,42 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun getCurrentUser(): Flow<User?> {
-        return sessionManager.sessionState.map { state ->
-            if (state.isLoggedIn && state.userRole != null) {
-                val userInfo = remoteDataSource.getCurrentUserInfo()
-                userInfo?.toDomain() ?: User(
-                    id = "id", 
-                    email = "email", 
-                    fullName = "User", 
-                    role = state.userRole, 
-                    companyId = "company",
-                    isApproved = state.isApproved
-                )
-            } else null
+        return remoteDataSource.getSessionStatus().map { status ->
+            when (status) {
+                is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
+                    val userInfo = remoteDataSource.getCurrentUserInfo()
+                    userInfo?.toDomain()
+                }
+                else -> null
+            }
         }
     }
 
     override suspend fun getSession(): UserSession? {
         val userInfo = remoteDataSource.getCurrentUserInfo()
-        return userInfo?.let {
-            UserSession(it.toDomain(), "")
-        }
+        return userInfo?.let { UserSession(it.toDomain(), "") }
     }
 
     private fun UserInfo.toDomain(): User {
-        val roleMetadata = userMetadata?.get("role")?.toString()?.removeSurrounding("\"")
-        val role = when {
-            roleMetadata?.uppercase() == "ADMIN" -> UserRole.ADMIN
-            else -> UserRole.EMPLOYEE
-        }
+        // Safe extraction with default fallbacks to prevent "System Error" on missing metadata
+        val rawData = userMetadata
         
+        val roleStr = rawData?.get("role")?.toString()?.removeSurrounding("\"")
+        val companyId = rawData?.get("company_id")?.toString()?.removeSurrounding("\"") ?: ""
+        val fullName = rawData?.get("full_name")?.toString()?.removeSurrounding("\"") ?: "Node User"
+        
+        // Logic check: Admin is ALWAYS approved. Employees check metadata or default to false.
+        val role = if (roleStr?.uppercase() == "ADMIN") UserRole.ADMIN else UserRole.EMPLOYEE
         val isApproved = if (role == UserRole.ADMIN) true 
-                         else userMetadata?.get("is_approved")?.toString()?.toBoolean() ?: false
-        
-        val companyName = userMetadata?.get("organisation_name")?.toString()?.removeSurrounding("\"")
-        
+                         else rawData?.get("is_approved")?.toString()?.toBoolean() ?: false
+
         return User(
             id = id,
             email = email ?: "",
-            fullName = userMetadata?.get("full_name")?.toString()?.removeSurrounding("\"") ?: "User",
+            fullName = fullName,
             role = role,
-            companyId = userMetadata?.get("company_id")?.toString()?.removeSurrounding("\"") ?: "",
-            companyName = companyName,
+            companyId = companyId,
+            companyName = rawData?.get("organisation_name")?.toString()?.removeSurrounding("\""),
             isApproved = isApproved
         )
     }

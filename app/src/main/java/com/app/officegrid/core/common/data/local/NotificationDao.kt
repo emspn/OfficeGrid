@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.app.officegrid.core.common.NotificationType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,4 +23,13 @@ interface NotificationDao {
 
     @Query("SELECT COUNT(*) FROM notifications WHERE isRead = 0")
     fun getUnreadCount(): Flow<Int>
+
+    @Query("DELETE FROM notifications WHERE id = :id")
+    suspend fun deleteNotification(id: String)
+
+    @Query("DELETE FROM notifications")
+    suspend fun clearAll()
+
+    @Query("SELECT * FROM notifications WHERE type = :type ORDER BY createdAt DESC")
+    fun getNotificationsByType(type: NotificationType): Flow<List<NotificationEntity>>
 }

@@ -6,8 +6,10 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "notification_settings")
 data class NotificationSettingsEntity(
     @PrimaryKey val userId: String,
-    val taskAssigned: Boolean,
-    val taskUpdated: Boolean,
-    val taskOverdue: Boolean,
-    val remarks: Boolean
+    val taskAssigned: Boolean = true,
+    val taskUpdated: Boolean = true,
+    val taskOverdue: Boolean = true,
+    val remarks: Boolean = true,
+    val joinRequests: Boolean = true,
+    val systemNotifications: Boolean = true
 )

@@ -13,12 +13,12 @@ import javax.inject.Singleton
 
 @Singleton
 class TaskRemarkRealtimeDataSource @Inject constructor(
-    private val realtime: Realtime?
+    private val realtime: Realtime
 ) {
     fun subscribeToRemarkInserts(): Flow<TaskRemarkDto> {
-        val realtimePlugin = realtime ?: throw Exception("Supabase Realtime not initialized")
+        val realtime = realtime ?: throw Exception("Supabase Realtime not initialized")
 
-        val channel = realtimePlugin.channel("task_remarks_inserts")
+        val channel = realtime.channel("task_remarks_inserts")
 
         return channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "task_remarks"
@@ -28,9 +28,9 @@ class TaskRemarkRealtimeDataSource @Inject constructor(
     }
 
     fun subscribeToRemarkDeletes(): Flow<String> {
-        val realtimePlugin = realtime ?: throw Exception("Supabase Realtime not initialized")
+        val realtime = realtime ?: throw Exception("Supabase Realtime not initialized")
 
-        val channel = realtimePlugin.channel("task_remarks_deletes")
+        val channel = realtime.channel("task_remarks_deletes")
 
         return channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
             table = "task_remarks"
@@ -39,3 +39,4 @@ class TaskRemarkRealtimeDataSource @Inject constructor(
         }
     }
 }
+

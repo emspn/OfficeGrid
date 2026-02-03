@@ -61,7 +61,9 @@ class NotificationSettingsRepositoryImpl @Inject constructor(
         taskAssigned = taskAssigned,
         taskUpdated = taskUpdated,
         taskOverdue = taskOverdue,
-        remarks = remarks
+        remarks = remarks,
+        joinRequests = joinRequests,
+        systemNotifications = systemNotifications
     )
 
     private fun NotificationSettings.toEntity() = NotificationSettingsEntity(
@@ -69,7 +71,9 @@ class NotificationSettingsRepositoryImpl @Inject constructor(
         taskAssigned = taskAssigned,
         taskUpdated = taskUpdated,
         taskOverdue = taskOverdue,
-        remarks = remarks
+        remarks = remarks,
+        joinRequests = joinRequests,
+        systemNotifications = systemNotifications
     )
 
     private fun NotificationSettings.toDto() = NotificationSettingsDto(
@@ -77,7 +81,9 @@ class NotificationSettingsRepositoryImpl @Inject constructor(
         task_assigned = taskAssigned,
         task_updated = taskUpdated,
         task_overdue = taskOverdue,
-        remarks = remarks
+        remarks = remarks,
+        join_requests = joinRequests,
+        system_notifications = systemNotifications
     )
 
     private fun NotificationSettingsDto.toEntity() = NotificationSettingsEntity(
@@ -85,6 +91,8 @@ class NotificationSettingsRepositoryImpl @Inject constructor(
         taskAssigned = task_assigned,
         taskUpdated = task_updated,
         taskOverdue = task_overdue,
-        remarks = remarks
+        remarks = remarks,
+        joinRequests = join_requests,
+        systemNotifications = system_notifications
     )
 }

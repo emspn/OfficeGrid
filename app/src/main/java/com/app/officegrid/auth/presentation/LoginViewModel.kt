@@ -40,7 +40,14 @@ class LoginViewModel @Inject constructor(
                     _state.update { it.copy(isLoading = false, isSuccess = true) }
                 }
                 .onFailure { error ->
-                    _state.update { it.copy(isLoading = false, error = error.message) }
+                    val rawMessage = error.message ?: ""
+                    val eliteMessage = when {
+                        rawMessage.contains("Invalid login credentials", ignoreCase = true) -> "AUTH_REJECTED: Invalid credentials."
+                        rawMessage.contains("network", ignoreCase = true) -> "Network error. Please check your connection."
+                        rawMessage.contains("Email not confirmed", ignoreCase = true) -> "AUTH_PENDING: Email verification required."
+                        else -> "SYSTEM_ERROR: Authentication failed."
+                    }
+                    _state.update { it.copy(isLoading = false, error = eliteMessage) }
                 }
         }
     }

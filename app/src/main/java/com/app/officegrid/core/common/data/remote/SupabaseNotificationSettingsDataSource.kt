@@ -8,25 +8,27 @@ import javax.inject.Singleton
 @Serializable
 data class NotificationSettingsDto(
     val user_id: String,
-    val task_assigned: Boolean,
-    val task_updated: Boolean,
-    val task_overdue: Boolean,
-    val remarks: Boolean
+    val task_assigned: Boolean = true,
+    val task_updated: Boolean = true,
+    val task_overdue: Boolean = true,
+    val remarks: Boolean = true,
+    val join_requests: Boolean = true,
+    val system_notifications: Boolean = true
 )
 
 @Singleton
 class SupabaseNotificationSettingsDataSource @Inject constructor(
-    private val postgrest: Postgrest?
+    private val postgrest: Postgrest
 ) {
     suspend fun getSettings(): NotificationSettingsDto? {
-        val postgrestPlugin = postgrest ?: throw Exception("Supabase Postgrest not initialized")
-        return postgrestPlugin["notification_settings"]
+        val postgrest = postgrest ?: throw Exception("Supabase Postgrest not initialized")
+        return postgrest["notification_settings"]
             .select()
             .decodeSingleOrNull<NotificationSettingsDto>()
     }
 
     suspend fun updateSettings(dto: NotificationSettingsDto) {
-        val postgrestPlugin = postgrest ?: throw Exception("Supabase Postgrest not initialized")
-        postgrestPlugin["notification_settings"].upsert(dto)
+        val postgrest = postgrest ?: throw Exception("Supabase Postgrest not initialized")
+        postgrest["notification_settings"].upsert(dto)
     }
 }

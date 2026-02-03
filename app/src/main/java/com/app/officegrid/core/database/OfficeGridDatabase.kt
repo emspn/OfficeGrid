@@ -28,7 +28,7 @@ import com.app.officegrid.team.data.local.EmployeeEntity
         NotificationSettingsEntity::class,
         AuditLogEntity::class
     ],
-    version = 3,
+    version = 6, // Incremented: EmployeeEntity now uses composite key (id + companyId) for multi-workspace
     exportSchema = false
 )
 @TypeConverters(Converters::class)

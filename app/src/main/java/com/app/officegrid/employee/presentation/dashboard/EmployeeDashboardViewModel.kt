@@ -22,14 +22,42 @@ class EmployeeDashboardViewModel @Inject constructor(
     private val taskRepository: TaskRepository
 ) : ViewModel() {
 
-    val dashboardData: StateFlow<UiState<EmployeeDashboardData>> = getCurrentUserUseCase()
-        .flatMapLatest { user ->
+    init {
+        android.util.Log.d("EmployeeDashboardVM", "⚡ ViewModel initialized - starting realtime sync")
+        syncTasks()
+        startPeriodicSync()
+    }
+
+    private val _workspaceFilter = MutableStateFlow<String?>(null)
+
+    private fun startPeriodicSync() {
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(1000) // ⚡ Sync every 1 second for INSTANT updates
+                android.util.Log.d("EmployeeDashboardVM", "🔄 Auto-syncing tasks...")
+                syncTasks()
+            }
+        }
+    }
+
+    val dashboardData: StateFlow<UiState<EmployeeDashboardData>> = combine(
+        getCurrentUserUseCase(),
+        _workspaceFilter
+    ) { user, workspaceId ->
+        user to workspaceId
+    }.flatMapLatest { (user, workspaceId) ->
             if (user == null) {
                 flowOf(UiState.Error("User not found"))
             } else {
                 getTasksUseCase(user.id).map { allTasks ->
-                    // Filter only tasks assigned to this employee
-                    val myTasks = allTasks.filter { it.assignedTo == user.id }
+                    // Filter tasks assigned to this employee
+                    var myTasks = allTasks.filter { it.assignedTo == user.id }
+
+                    // Further filter by workspace if specified
+                    if (!workspaceId.isNullOrBlank()) {
+                        myTasks = myTasks.filter { it.companyId == workspaceId }
+                        android.util.Log.d("EmployeeDashboard", "Filtered ${myTasks.size} tasks for workspace: $workspaceId")
+                    }
 
                     val total = myTasks.size
                     val todo = myTasks.count { it.status == TaskStatus.TODO }
@@ -68,11 +96,21 @@ class EmployeeDashboardViewModel @Inject constructor(
         syncTasks()
     }
 
+    fun setWorkspaceFilter(workspaceId: String) {
+        _workspaceFilter.value = workspaceId
+        android.util.Log.d("EmployeeDashboard", "Workspace filter set to: $workspaceId")
+    }
+
     fun syncTasks() {
         viewModelScope.launch {
-            val user = getCurrentUserUseCase().first() ?: return@launch
-            android.util.Log.d("EmployeeDashboard", "Syncing tasks for employee: ${user.id}")
-            taskRepository.syncTasks(user.id)
+            try {
+                val user = getCurrentUserUseCase().first() ?: return@launch
+                android.util.Log.d("EmployeeDashboardVM", "⚡ Syncing tasks for employee: ${user.id}")
+                taskRepository.syncTasks(user.id)
+                android.util.Log.d("EmployeeDashboardVM", "✅ Sync completed")
+            } catch (e: Exception) {
+                android.util.Log.e("EmployeeDashboardVM", "❌ Sync error: ${e.message}", e)
+            }
         }
     }
 }
@@ -85,3 +123,4 @@ data class EmployeeDashboardData(
     val completionRate: Float,
     val recentTasks: List<Task>
 )
+

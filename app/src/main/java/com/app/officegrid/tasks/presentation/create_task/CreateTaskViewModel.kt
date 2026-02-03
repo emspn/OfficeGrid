@@ -61,11 +61,38 @@ class CreateTaskViewModel @Inject constructor(
         loadEmployees()
     }
 
+    fun refreshEmployees() {
+        loadEmployees()
+    }
+
     private fun loadEmployees() {
         viewModelScope.launch {
-            val user = getCurrentUserUseCase().first() ?: return@launch
-            employeeRepository.getEmployees(user.companyId).collect { list ->
-                _employees.value = list.filter { it.status == EmployeeStatus.APPROVED }
+            try {
+                val user = getCurrentUserUseCase().first() ?: return@launch
+                
+                android.util.Log.d("CreateTaskVM", "🔄 Loading employees for company: ${user.companyId}")
+
+                // First sync from Supabase
+                employeeRepository.syncEmployees(user.companyId)
+
+                // Then load from database and filter
+                employeeRepository.getEmployees(user.companyId).collect { employees ->
+                    android.util.Log.d("CreateTaskVM", "📊 Total employees fetched: ${employees.size}")
+
+                    val approvedEmployees = employees.filter {
+                        it.status == EmployeeStatus.APPROVED && it.id != user.id
+                    }
+
+                    android.util.Log.d("CreateTaskVM", "✅ Approved employees (excluding admin): ${approvedEmployees.size}")
+                    approvedEmployees.forEach { emp ->
+                        android.util.Log.d("CreateTaskVM", "   → ${emp.name} (${emp.id})")
+                    }
+
+                    _employees.value = approvedEmployees
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CreateTaskVM", "❌ Failed to load employees: ${e.message}", e)
+                _events.send(UiEvent.ShowMessage("Failed to load employees"))
             }
         }
     }
@@ -78,18 +105,17 @@ class CreateTaskViewModel @Inject constructor(
 
     fun createTask() {
         if (_title.value.isBlank()) {
-            viewModelScope.launch { _events.send(UiEvent.ShowMessage("Title cannot be empty")) }
+            viewModelScope.launch { _events.send(UiEvent.ShowMessage("⚠️ Please enter a task title")) }
             return
         }
 
         if (_assignedTo.value.isBlank()) {
-            viewModelScope.launch { _events.send(UiEvent.ShowMessage("Please assign the task to someone")) }
+            viewModelScope.launch { _events.send(UiEvent.ShowMessage("⚠️ Please assign this task to a team member")) }
             return
         }
 
         viewModelScope.launch {
             val user = getCurrentUserUseCase().first() ?: return@launch
-            
             _state.update { it.copy(isLoading = true, error = null) }
             
             val newTask = Task(
@@ -101,18 +127,19 @@ class CreateTaskViewModel @Inject constructor(
                 assignedTo = _assignedTo.value,
                 createdBy = user.id,
                 companyId = user.companyId,
-                dueDate = _dueDate.value
+                dueDate = _dueDate.value,
+                createdAt = System.currentTimeMillis()
             )
 
             repository.createTask(newTask)
                 .onSuccess {
                     _state.update { it.copy(isLoading = false, isSuccess = true) }
-                    _events.send(UiEvent.ShowMessage("Task created successfully"))
+                    _events.send(UiEvent.ShowMessage("✅ Task created and assigned successfully!"))
                     _events.send(UiEvent.Navigate(Screen.AdminTasks.route))
                 }
                 .onFailure { error ->
                     _state.update { it.copy(isLoading = false, error = error.message) }
-                    _events.send(UiEvent.ShowMessage(error.message ?: "Failed to create task"))
+                    _events.send(UiEvent.ShowMessage(error.message ?: "❌ Unable to create task. Please try again."))
                 }
         }
     }
@@ -120,22 +147,17 @@ class CreateTaskViewModel @Inject constructor(
     fun createTasksFromTemplate(template: TaskTemplate) {
         if (_assignedTo.value.isBlank()) {
             viewModelScope.launch {
-                _events.send(UiEvent.ShowMessage("Please select an employee first"))
+                _events.send(UiEvent.ShowMessage("⚠️ Please select a team member before using templates"))
             }
             return
         }
 
         viewModelScope.launch {
             val user = getCurrentUserUseCase().first() ?: return@launch
-
             _state.update { it.copy(isLoading = true, error = null) }
 
             var successCount = 0
-            var failCount = 0
-
-            // Create tasks from template
             template.tasks.forEachIndexed { index, templateTask ->
-                // Calculate due date based on estimated days
                 val daysFromNow = template.tasks.take(index + 1).sumOf { it.estimatedDays }
                 val taskDueDate = System.currentTimeMillis() + (daysFromNow * 86400000L)
 
@@ -148,23 +170,20 @@ class CreateTaskViewModel @Inject constructor(
                     assignedTo = _assignedTo.value,
                     createdBy = user.id,
                     companyId = user.companyId,
-                    dueDate = taskDueDate
+                    dueDate = taskDueDate,
+                    createdAt = System.currentTimeMillis()
                 )
 
                 repository.createTask(newTask)
                     .onSuccess { successCount++ }
-                    .onFailure { failCount++ }
             }
 
             _state.update { it.copy(isLoading = false, isSuccess = successCount > 0) }
 
             if (successCount > 0) {
-                _events.send(UiEvent.ShowMessage("✅ Created $successCount tasks from ${template.name}!"))
+                _events.send(UiEvent.ShowMessage("✅ Successfully created $successCount tasks from ${template.name} template!"))
                 _events.send(UiEvent.Navigate(Screen.AdminTasks.route))
-            } else {
-                _events.send(UiEvent.ShowMessage("❌ Failed to create tasks"))
             }
         }
     }
 }
-

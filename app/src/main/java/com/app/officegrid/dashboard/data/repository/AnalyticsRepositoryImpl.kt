@@ -3,13 +3,11 @@ package com.app.officegrid.dashboard.data.repository
 import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.dashboard.data.local.AnalyticsDao
 import com.app.officegrid.dashboard.data.local.AnalyticsEntity
-import com.app.officegrid.dashboard.data.remote.SupabaseAnalyticsDataSource
 import com.app.officegrid.dashboard.domain.model.Analytics
 import com.app.officegrid.dashboard.domain.repository.AnalyticsRepository
 import com.app.officegrid.tasks.domain.model.TaskStatus
 import com.app.officegrid.tasks.domain.repository.TaskRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -40,7 +38,8 @@ class AnalyticsRepositoryImpl @Inject constructor(
 
     override suspend fun syncAnalytics(companyId: String): Result<Unit> {
         return try {
-            val tasks = taskRepository.getTasks("").first() // Logic depends on RLS for admin
+            // Fix: Use getAllTasks() to see the entire registry, not just current user's
+            val tasks = taskRepository.getAllTasks().first()
             
             val total = tasks.size
             val completed = tasks.count { it.status == TaskStatus.DONE }
@@ -48,9 +47,13 @@ class AnalyticsRepositoryImpl @Inject constructor(
             val pending = tasks.count { it.status == TaskStatus.TODO }
             val overdue = tasks.count { it.dueDate < System.currentTimeMillis() && it.status != TaskStatus.DONE }
             
-            val perEmployee = tasks.groupBy { it.assignedTo }.mapValues { it.value.size }
-            val completedPerEmployee = tasks.filter { it.status == TaskStatus.DONE }
-                .groupBy { it.assignedTo }.mapValues { it.value.size }
+            val perEmployee = tasks.filter { it.assignedTo.isNotEmpty() }
+                .groupBy { it.assignedTo }
+                .mapValues { it.value.size }
+            
+            val completedPerEmployee = tasks.filter { it.status == TaskStatus.DONE && it.assignedTo.isNotEmpty() }
+                .groupBy { it.assignedTo }
+                .mapValues { it.value.size }
 
             val entity = AnalyticsEntity(
                 companyId = companyId,

@@ -50,33 +50,122 @@ class SignupViewModel @Inject constructor(
     fun signup(role: UserRole) {
         val isOrg = role == UserRole.ADMIN
         
-        if (_email.value.isBlank() || _password.value.isBlank() || _fullName.value.isBlank() || _companyId.value.isBlank()) {
-            _state.update { it.copy(error = "All mandatory fields are required") }
-            return
-        }
-        
-        if (isOrg && (_organisationName.value.isBlank() || _organisationType.value.isBlank())) {
-            _state.update { it.copy(error = "Organisation details are required") }
-            return
+        // Better validation with clear error messages
+        if (isOrg) {
+            // ADMIN validation
+            when {
+                _email.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter your email address") }
+                    return
+                }
+                !_email.value.contains("@") -> {
+                    _state.update { it.copy(error = "Please enter a valid email address") }
+                    return
+                }
+                _password.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter a password") }
+                    return
+                }
+                _password.value.length < 8 -> {
+                    _state.update { it.copy(error = "Password must be at least 8 characters") }
+                    return
+                }
+                _companyId.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter a workspace ID") }
+                    return
+                }
+                _companyId.value.length < 3 -> {
+                    _state.update { it.copy(error = "Workspace ID must be at least 3 characters") }
+                    return
+                }
+                _organisationName.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter your organization name") }
+                    return
+                }
+                _organisationType.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please select organization type") }
+                    return
+                }
+            }
+        } else {
+            // EMPLOYEE validation
+            when {
+                _fullName.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter your full name") }
+                    return
+                }
+                _email.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter your email address") }
+                    return
+                }
+                !_email.value.contains("@") -> {
+                    _state.update { it.copy(error = "Please enter a valid email address") }
+                    return
+                }
+                _password.value.isBlank() -> {
+                    _state.update { it.copy(error = "Please enter a password") }
+                    return
+                }
+                _password.value.length < 8 -> {
+                    _state.update { it.copy(error = "Password must be at least 8 characters") }
+                    return
+                }
+            }
         }
 
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            authRepository.signup(
-                email = _email.value,
-                password = _password.value,
-                fullName = _fullName.value,
-                role = role,
-                companyId = _companyId.value,
-                companyName = if (isOrg) _organisationName.value else null,
-                orgType = if (isOrg) _organisationType.value else null
-            )
-                .onSuccess {
-                    _state.update { it.copy(isLoading = false, isSuccess = true) }
-                }
-                .onFailure { error ->
-                    _state.update { it.copy(isLoading = false, error = error.message) }
-                }
+
+            try {
+                // For ADMIN: use organization name as fullName
+                val nameToUse = if (isOrg) _organisationName.value else _fullName.value
+
+                authRepository.signup(
+                    email = _email.value.trim(),
+                    password = _password.value,
+                    fullName = nameToUse.trim(),
+                    role = role,
+                    companyId = if (isOrg) _companyId.value else "",
+                    companyName = if (isOrg) _organisationName.value.trim() else null,
+                    orgType = if (isOrg) _organisationType.value else null
+                )
+                    .onSuccess {
+                        _state.update { it.copy(isLoading = false, isSuccess = true) }
+                    }
+                    .onFailure { error ->
+                        // Final safety check: Filter out any URLs and "url" text that might have slipped through
+                        val rawMessage = error.message ?: "Signup failed. Please try again."
+                        android.util.Log.e("SignupViewModel", "Error received: $rawMessage")
+
+                        val cleanMessage = if (rawMessage.contains("http", ignoreCase = true) ||
+                                             rawMessage.contains("url", ignoreCase = true)) {
+                            android.util.Log.e("SignupViewModel", "Message contains URL or 'url' text, filtering...")
+
+                            val parts = rawMessage
+                                .substringBefore("http", rawMessage)
+                                .substringBefore("https", rawMessage)
+                                .substringBefore("url", rawMessage)
+                                .substringBefore("URL", rawMessage)
+                                .trim()
+
+                            if (parts.isNotBlank() && parts.length > 10) {
+                                android.util.Log.e("SignupViewModel", "Using cleaned part: $parts")
+                                parts.take(100)
+                            } else {
+                                android.util.Log.e("SignupViewModel", "No valid part, using fallback")
+                                "Signup failed. Please check your connection and try again."
+                            }
+                        } else {
+                            rawMessage.take(100) // Limit message length
+                        }
+
+                        android.util.Log.e("SignupViewModel", "Final message to user: $cleanMessage")
+                        _state.update { it.copy(isLoading = false, error = cleanMessage) }
+                    }
+            } catch (e: Exception) {
+                val errorMsg = "An error occurred. Please check your connection and try again."
+                _state.update { it.copy(isLoading = false, error = errorMsg) }
+            }
         }
     }
 }

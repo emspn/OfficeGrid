@@ -1,9 +1,8 @@
 package com.app.officegrid.tasks.presentation.components
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,14 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.app.officegrid.tasks.domain.model.Task
@@ -29,137 +24,298 @@ import com.app.officegrid.tasks.domain.model.TaskStatus
 import com.app.officegrid.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.roundToInt
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SwipeableTaskCard(
     task: Task,
     onClick: () -> Unit,
     onStatusChange: (TaskStatus) -> Unit,
     onDelete: () -> Unit,
+    onEdit: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var isRevealed by remember { mutableStateOf(false) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
+    var showApproveDialog by remember { mutableStateOf(false) }
+    var showRejectDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val density = LocalDensity.current
-    val maxSwipe = with(density) { 160.dp.toPx() }
-
-    Box(
-        modifier = modifier.fillMaxWidth()
-    ) {
-        // Background actions (revealed when swiped)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .background(Color.White),
-            horizontalArrangement = Arrangement.End
-        ) {
-            // Next Status Action
-            Surface(
-                onClick = {
-                    val nextStatus = when (task.status) {
-                        TaskStatus.TODO -> TaskStatus.IN_PROGRESS
-                        TaskStatus.IN_PROGRESS -> TaskStatus.DONE
-                        TaskStatus.DONE -> TaskStatus.TODO
-                    }
-                    onStatusChange(nextStatus)
-                    offsetX = 0f
-                },
-                modifier = Modifier
-                    .width(80.dp)
-                    .fillMaxHeight(),
-                color = ProfessionalWarning,
-                shape = RoundedCornerShape(0.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+    // Approve Confirmation Dialog
+    if (showApproveDialog) {
+        AlertDialog(
+            onDismissRequest = { showApproveDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = ProfessionalSuccess,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Approve Task Completion?",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Do you want to approve this task as completed?",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Task: ${task.title}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = DeepCharcoal
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onStatusChange(TaskStatus.DONE)
+                        showApproveDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ProfessionalSuccess)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Update Status",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                    Text("YES, APPROVE")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showApproveDialog = false }) {
+                    Text("CANCEL")
+                }
+            }
+        )
+    }
+
+    // Reject Confirmation Dialog
+    if (showRejectDialog) {
+        AlertDialog(
+            onDismissRequest = { showRejectDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = null,
+                    tint = ProfessionalError,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Reject Task Completion?",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Send this task back to the employee for more work?",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Task: ${task.title}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = DeepCharcoal
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onStatusChange(TaskStatus.IN_PROGRESS)
+                        showRejectDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ProfessionalError)
+                ) {
+                    Text("YES, REJECT")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRejectDialog = false }) {
+                    Text("CANCEL")
+                }
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = ProfessionalError,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Delete Task?",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Are you sure you want to permanently delete this task?",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Task: ${task.title}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = ProfessionalError
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "NEXT",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = Color.White
+                        "This action cannot be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = StoneGray
                     )
                 }
-            }
-
-            // Delete Action
-            Surface(
-                onClick = {
-                    onDelete()
-                    offsetX = 0f
-                },
-                modifier = Modifier
-                    .width(80.dp)
-                    .fillMaxHeight(),
-                color = ProfessionalError,
-                shape = RoundedCornerShape(0.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ProfessionalError)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "DELETE",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = Color.White
-                    )
+                    Text("YES, DELETE")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("CANCEL")
                 }
             }
-        }
+        )
+    }
 
-        // Task Card (swipeable)
-        Surface(
-            onClick = onClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset { IntOffset(offsetX.roundToInt(), 0) }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            if (offsetX < -maxSwipe / 2) {
-                                offsetX = -maxSwipe
-                                isRevealed = true
-                            } else {
-                                offsetX = 0f
-                                isRevealed = false
+    // Options Menu (shown on long press)
+    if (showOptionsMenu) {
+        AlertDialog(
+            onDismissRequest = { showOptionsMenu = false },
+            title = {
+                Text(
+                    "Task Actions",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Edit Option (if available)
+                    if (onEdit != null) {
+                        Surface(
+                            onClick = {
+                                onEdit()
+                                showOptionsMenu = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = DeepCharcoal.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Edit, null, tint = DeepCharcoal)
+                                Text("Edit Task", style = MaterialTheme.typography.bodyLarge)
                             }
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            val newOffset = offsetX + dragAmount
-                            offsetX = newOffset.coerceIn(-maxSwipe, 0f)
                         }
-                    )
-                },
-            color = Color.White,
-            border = androidx.compose.foundation.BorderStroke(0.5.dp, WarmBorder)
-        ) {
-            TaskCardContent(task = task)
-        }
+                    }
+
+                    // Change Status Option
+                    Surface(
+                        onClick = {
+                            val nextStatus = when (task.status) {
+                                TaskStatus.TODO -> TaskStatus.IN_PROGRESS
+                                TaskStatus.IN_PROGRESS -> TaskStatus.PENDING_COMPLETION
+                                TaskStatus.PENDING_COMPLETION -> TaskStatus.DONE
+                                TaskStatus.DONE -> TaskStatus.TODO
+                            }
+                            onStatusChange(nextStatus)
+                            showOptionsMenu = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = ProfessionalWarning.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, null, tint = ProfessionalWarning)
+                            Text("Change Status", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+
+                    // Delete Option
+                    Surface(
+                        onClick = {
+                            showOptionsMenu = false
+                            showDeleteDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = ProfessionalError.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Delete, null, tint = ProfessionalError)
+                            Text("Delete Task", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showOptionsMenu = false }) {
+                    Text("CLOSE")
+                }
+            }
+        )
+    }
+
+    // Task Card with Long Press
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showOptionsMenu = true }
+            ),
+        color = Color.White,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, WarmBorder)
+    ) {
+        TaskCardContent(
+            task = task,
+            onApprove = { showApproveDialog = true },
+            onReject = { showRejectDialog = true }
+        )
     }
 }
 
 @Composable
-private fun TaskCardContent(task: Task) {
+private fun TaskCardContent(
+    task: Task,
+    onApprove: () -> Unit,
+    onReject: () -> Unit
+) {
     val formattedDate = remember(task.dueDate) {
         SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(task.dueDate))
     }
@@ -170,105 +326,212 @@ private fun TaskCardContent(task: Task) {
         TaskPriority.LOW -> DeepCharcoal
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.Top
+            .padding(16.dp)
     ) {
-        // Priority Indicator
-        Box(
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .size(8.dp)
-                .background(accentColor, CircleShape)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            // Status and Priority
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = task.status.name,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 9.sp
-                    ),
-                    color = when(task.status) {
-                        TaskStatus.DONE -> ProfessionalSuccess
-                        TaskStatus.IN_PROGRESS -> ProfessionalWarning
-                        TaskStatus.TODO -> StoneGray
-                    }
-                )
-
-                Surface(
-                    color = accentColor.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(2.dp)
-                ) {
-                    Text(
-                        text = task.priority.name,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = accentColor
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Title
-            Text(
-                text = task.title,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                color = Gray900,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Description
-            if (task.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = task.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = StoneGray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Due Date
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Priority Indicator
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = Gray500
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(accentColor, CircleShape)
                 )
                 Text(
-                    text = "DUE: $formattedDate",
+                    text = task.status.name.replace("_", " "),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black,
                         fontSize = 10.sp
                     ),
-                    color = Gray500
+                    color = when (task.status) {
+                        TaskStatus.TODO -> StoneGray
+                        TaskStatus.IN_PROGRESS -> ProfessionalWarning
+                        TaskStatus.PENDING_COMPLETION -> Color(0xFF2196F3)
+                        TaskStatus.DONE -> ProfessionalSuccess
+                    }
                 )
+            }
+
+            // Priority Badge
+            Surface(
+                color = accentColor.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = task.priority.name,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = accentColor
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Title
+        Text(
+            text = task.title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            color = Gray900,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // Description
+        if (task.description.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = task.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = StoneGray,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 20.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Due Date
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CalendarToday,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = Gray500
+            )
+            Text(
+                text = "DUE: $formattedDate",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp
+                ),
+                color = Gray500
+            )
+        }
+
+        // 🎯 ADMIN APPROVAL SECTION - Show when PENDING_COMPLETION
+        if (task.status == TaskStatus.PENDING_COMPLETION) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFFFF9800).copy(alpha = 0.12f),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFFF9800))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = Color(0xFFFF6F00),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            "APPROVAL REQUIRED",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.8.sp
+                            ),
+                            color = Color(0xFFFF6F00)
+                        )
+                    }
+
+                    Text(
+                        "Employee has completed this task and is waiting for your approval",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DeepCharcoal.copy(alpha = 0.8f)
+                    )
+
+                    // Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // APPROVE Button
+                        Button(
+                            onClick = onApprove,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ProfessionalSuccess
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 4.dp,
+                                pressedElevation = 8.dp
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "APPROVE",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            )
+                        }
+
+                        // REJECT Button
+                        OutlinedButton(
+                            onClick = onReject,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                2.dp,
+                                ProfessionalError
+                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = ProfessionalError
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "REJECT",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }

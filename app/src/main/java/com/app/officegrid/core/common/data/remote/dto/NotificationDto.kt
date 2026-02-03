@@ -11,5 +11,6 @@ data class NotificationDto(
     val type: String,
     val company_id: String,
     val is_read: Boolean = false,
-    val created_at: String? = null
+    val created_at: String? = null,
+    val related_id: String? = null
 )

@@ -55,7 +55,9 @@ fun OfficeGridTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = android.graphics.Color.WHITE
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
         }
     }
 
@@ -65,3 +67,4 @@ fun OfficeGridTheme(
         content = content
     )
 }
+

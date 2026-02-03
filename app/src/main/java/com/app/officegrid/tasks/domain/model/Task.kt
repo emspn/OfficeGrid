@@ -9,11 +9,12 @@ data class Task(
     val assignedTo: String,
     val createdBy: String,
     val companyId: String,
-    val dueDate: Long
+    val dueDate: Long,
+    val createdAt: Long = 0L
 )
 
 enum class TaskStatus {
-    TODO, IN_PROGRESS, DONE
+    TODO, IN_PROGRESS, PENDING_COMPLETION, DONE
 }
 
 enum class TaskPriority {

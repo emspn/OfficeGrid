@@ -96,6 +96,7 @@ dependencies {
 
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.ui)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
@@ -112,6 +113,7 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.okhttp)
 
+
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
@@ -127,6 +129,9 @@ dependencies {
 
     // Navigation
     implementation(libs.navigation.compose)
+
+    // Coil for Image Loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     // Testing
     testImplementation(libs.junit)

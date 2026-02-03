@@ -10,8 +10,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,8 +49,22 @@ fun TaskDetailScreen(
     val remarks by viewModel.remarks.collectAsState(initial = emptyList())
     val remarkMessage by viewModel.remarkMessage.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState(initial = null)
-    
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // ⚡ NEW: Sync on EVERY screen resume
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                android.util.Log.d("TaskDetailScreen", "⚡ Screen resumed - syncing task details")
+                viewModel.refreshTaskAndRemarks()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -63,19 +80,19 @@ fun TaskDetailScreen(
             onDismissRequest = { showDeleteDialog = false },
             containerColor = Color.White,
             shape = RoundedCornerShape(2.dp),
-            title = { Text("PURGE_CONFIRMATION", style = MaterialTheme.typography.labelLarge, color = DeepCharcoal) },
-            text = { Text("Warning: Permanent removal of operational unit. Continue?", style = MaterialTheme.typography.bodySmall, color = StoneGray) },
+            title = { Text("Delete Task", style = MaterialTheme.typography.labelLarge, color = DeepCharcoal) },
+            text = { Text("Are you sure you want to delete this task? This action cannot be undone.", style = MaterialTheme.typography.bodySmall, color = StoneGray) },
             confirmButton = {
                 TextButton(onClick = { 
                     viewModel.deleteTask()
                     showDeleteDialog = false
                 }) {
-                    Text("CONFIRM_PURGE", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
+                    Text("Delete", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("ABORT", style = MaterialTheme.typography.labelSmall, color = DeepCharcoal)
+                    Text("Cancel", style = MaterialTheme.typography.labelSmall, color = DeepCharcoal)
                 }
             }
         )
@@ -108,7 +125,7 @@ fun TaskDetailScreen(
             }
             is UiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "UNIT_FETCH_FAILURE: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
+                    Text(text = "Error loading task: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
                 }
             }
         }
@@ -147,8 +164,8 @@ fun TaskDetailContent(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("UNIT_SPECIFICATIONS", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
-                Text("SYSTEM_OPERATIONAL_OVERVIEW", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                Text("Task Details", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
+                Text("View and manage task", style = MaterialTheme.typography.labelSmall, color = StoneGray)
             }
             if (currentUser?.role == UserRole.ADMIN) {
                 IconButton(onClick = { onNavigateToEdit(task.id) }, modifier = Modifier.size(32.dp)) {
@@ -177,7 +194,7 @@ fun TaskDetailContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "UNIT_ID: ${task.id.uppercase()}",
+                    text = "Task ID: ${task.id.take(8).uppercase()}",
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                     color = StoneGray
                 )
@@ -216,7 +233,7 @@ fun TaskDetailContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = task.description.ifBlank { "NO_SPECIFICATIONS_PROVIDED" },
+                    text = task.description.ifBlank { "No description provided" },
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = Gray700,
@@ -229,6 +246,185 @@ fun TaskDetailContent(
 
         // Status Control
         EliteDetailSection(label = "WORKFLOW_STATE_MANAGEMENT") {
+            // 🎯 ADMIN APPROVAL BANNER - Beautiful & Prominent
+            if (task.status == TaskStatus.PENDING_COMPLETION && currentUser?.role == UserRole.ADMIN) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    color = Color(0xFFFFF3E0),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        3.dp,
+                        Color(0xFFFF9800)
+                    ),
+                    shadowElevation = 12.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Alert icon with pulsing background
+                        Surface(
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            color = Color(0xFFFF9800).copy(alpha = 0.2f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF6F00),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+
+                        // Title
+                        Text(
+                            "⚡ ACTION REQUIRED",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.2.sp
+                            ),
+                            color = Color(0xFFE65100)
+                        )
+
+                        // Description
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                "Employee has completed this task",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = DeepCharcoal,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                "Review their work and approve or send back for changes",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = StoneGray,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = Color(0xFFFF9800).copy(alpha = 0.3f)
+                        )
+
+                        // Action Buttons - Large & Clear
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // APPROVE Button
+                            Button(
+                                onClick = {
+                                    onUpdateStatus(TaskStatus.DONE)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF4CAF50),
+                                    disabledContainerColor = Color(0xFF4CAF50).copy(alpha = 0.5f)
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                enabled = !isUpdating,
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 6.dp,
+                                    pressedElevation = 10.dp
+                                )
+                            ) {
+                                if (isUpdating) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 3.dp
+                                    )
+                                } else {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            "APPROVE",
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                letterSpacing = 0.8.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            // REJECT Button
+                            OutlinedButton(
+                                onClick = {
+                                    onUpdateStatus(TaskStatus.IN_PROGRESS)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                enabled = !isUpdating,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    2.dp,
+                                    if (isUpdating) Color.Gray else Color(0xFFE53935)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFE53935)
+                                )
+                            ) {
+                                if (isUpdating) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color(0xFFE53935),
+                                        strokeWidth = 3.dp
+                                    )
+                                } else {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            "REJECT",
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                letterSpacing = 0.8.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Hint text
+                        Text(
+                            "💡 Tip: Add a comment below if rejecting",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = StoneGray.copy(alpha = 0.8f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -258,7 +454,7 @@ fun TaskDetailContent(
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 1.dp)
                             } else {
                                 Text(
-                                    "COMMIT_STATUS_TRANSITION", 
+                                    "Update Status",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, color = Color.White)
                                 )
                             }
@@ -271,9 +467,9 @@ fun TaskDetailContent(
         Spacer(modifier = Modifier.height(40.dp))
 
         // Activity Log
-        EliteDetailSection(label = "DEPLOYMENT_TIMELINE") {
+        EliteDetailSection(label = "Comments") {
             if (remarks.isEmpty()) {
-                Text("NO_TIMELINE_ENTRIES", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                Text("No comments yet", style = MaterialTheme.typography.labelSmall, color = StoneGray)
             } else {
                 remarks.forEach { remark ->
                     ProfessionalRemarkRow(remark)
@@ -285,7 +481,7 @@ fun TaskDetailContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Remark Input
-        EliteDetailSection(label = "LOG_UPDATE_ENTRY") {
+        EliteDetailSection(label = "Add Comment") {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -293,7 +489,7 @@ fun TaskDetailContent(
                 TextField(
                     value = remarkMessage,
                     onValueChange = onRemarkChange,
-                    placeholder = { Text("ENTER_LOG_METADATA...", style = MaterialTheme.typography.labelSmall, color = WarmBorder) },
+                    placeholder = { Text("Write a comment...", style = MaterialTheme.typography.labelSmall, color = WarmBorder) },
                     modifier = Modifier.weight(1f),
                     enabled = !isUpdating,
                     colors = TextFieldDefaults.colors(
@@ -333,9 +529,10 @@ fun EliteDetailSection(label: String, content: @Composable ColumnScope.() -> Uni
 @Composable
 fun StatusBadgeElite(status: TaskStatus) {
     val (dotColor, label) = when (status) {
-        TaskStatus.TODO -> StoneGray to "STATE_PENDING"
-        TaskStatus.IN_PROGRESS -> ProfessionalWarning to "STATE_ACTIVE"
-        TaskStatus.DONE -> ProfessionalSuccess to "STATE_TERMINATED"
+        TaskStatus.TODO -> StoneGray to "To Do"
+        TaskStatus.IN_PROGRESS -> ProfessionalWarning to "In Progress"
+        TaskStatus.PENDING_COMPLETION -> Color(0xFF2196F3) to "Pending Review"
+        TaskStatus.DONE -> ProfessionalSuccess to "Completed"
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -397,7 +594,7 @@ fun ProfessionalRemarkRow(remark: TaskRemark) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "LOG_NODE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp), color = DeepCharcoal)
+                Text(text = "Comment", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp), color = DeepCharcoal)
                 Text(text = formatDetailDate(remark.createdAt), style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp), color = StoneGray)
             }
             Spacer(modifier = Modifier.height(6.dp))

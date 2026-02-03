@@ -5,12 +5,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,12 +28,68 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+enum class AuditEventFilter {
+    ALL_TYPES,
+    CREATE,
+    COMPLETED,  // Maps to STATUS_CHANGE (includes task completion/approval events)
+    DELETED
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuditLogsScreen(
     viewModel: AuditLogViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    var showEventFilterDialog by remember { mutableStateOf(false) }
+    var selectedEventFilter by remember { mutableStateOf<AuditEventFilter>(AuditEventFilter.ALL_TYPES) }
+
+    // Event Filter Dialog
+    if (showEventFilterDialog) {
+        AlertDialog(
+            onDismissRequest = { showEventFilterDialog = false },
+            title = {
+                Text(
+                    "Select Event Type",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AuditEventFilter.values().forEach { filter ->
+                        Surface(
+                            onClick = {
+                                selectedEventFilter = filter
+                                showEventFilterDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (selectedEventFilter == filter) ProfessionalSuccess.copy(alpha = 0.1f) else Color.Transparent,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                when (filter) {
+                                    AuditEventFilter.ALL_TYPES -> "All Types"
+                                    AuditEventFilter.CREATE -> "Create"
+                                    AuditEventFilter.COMPLETED -> "Completed"
+                                    AuditEventFilter.DELETED -> "Deleted"
+                                },
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = if (selectedEventFilter == filter) FontWeight.Bold else FontWeight.Normal
+                                ),
+                                color = DeepCharcoal
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showEventFilterDialog = false }) {
+                    Text("CLOSE")
+                }
+            }
+        )
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -45,7 +102,15 @@ fun AuditLogsScreen(
                 }
             }
             is UiState.Success -> {
-                val logs = uiState.data
+                val allLogs = uiState.data
+                // Apply event type filter
+                val logs = when (selectedEventFilter) {
+                    AuditEventFilter.ALL_TYPES -> allLogs
+                    AuditEventFilter.CREATE -> allLogs.filter { it.eventType == AuditEventType.CREATE }
+                    AuditEventFilter.COMPLETED -> allLogs.filter { it.eventType == AuditEventType.STATUS_CHANGE }  // Approved/completed tasks
+                    AuditEventFilter.DELETED -> allLogs.filter { it.eventType == AuditEventType.DELETE }
+                }
+
                 PullToRefreshBox(
                     isRefreshing = false,
                     onRefresh = viewModel::syncLogs,
@@ -57,9 +122,70 @@ fun AuditLogsScreen(
                         verticalArrangement = Arrangement.spacedBy(1.dp)
                     ) {
                         item {
-                            Column(modifier = Modifier.padding(bottom = 32.dp)) {
-                                Text("SYSTEM_LOGS", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
-                                Text("IMMUTABLE_ACTIVITY_HISTORY", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                            Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                                Text(
+                                    "Activity",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        letterSpacing = 1.sp,
+                                        fontWeight = FontWeight.Black
+                                    ),
+                                    color = DeepCharcoal
+                                )
+                                Text(
+                                    "Recent activity in your workspace",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = StoneGray
+                                )
+                            }
+                        }
+
+                        item {
+                            // Event Type Filter Dropdown
+                            Surface(
+                                onClick = { showEventFilterDialog = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 24.dp),
+                                color = Color.White,
+                                shape = RoundedCornerShape(10.dp),
+                                shadowElevation = 2.dp,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.FilterList,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = DeepCharcoal
+                                        )
+                                        Text(
+                                            when (selectedEventFilter) {
+                                                AuditEventFilter.ALL_TYPES -> "All Types"
+                                                AuditEventFilter.CREATE -> "Create"
+                                                AuditEventFilter.COMPLETED -> "Completed"
+                                                AuditEventFilter.DELETED -> "Deleted"
+                                            },
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                fontWeight = FontWeight.Bold
+                                            ),
+                                            color = DeepCharcoal
+                                        )
+                                    }
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = DeepCharcoal
+                                    )
+                                }
                             }
                         }
 
@@ -75,7 +201,11 @@ fun AuditLogsScreen(
             }
             is UiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "LOG_FETCH_FAILURE: ${uiState.message}", style = MaterialTheme.typography.labelSmall, color = ProfessionalError)
+                    Text(
+                        text = "Error loading activity: ${uiState.message}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ProfessionalError
+                    )
                 }
             }
         }
@@ -147,8 +277,8 @@ fun EliteAuditLogRow(log: AuditLog) {
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Text(
-                    text = "AUTH_REF: ${log.userEmail}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
+                    text = "By: ${log.userEmail}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                     color = StoneGray
                 )
             }
@@ -158,8 +288,15 @@ fun EliteAuditLogRow(log: AuditLog) {
 
 @Composable
 fun ProfessionalEmptyLogsState() {
-    Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-        Text("NO_LEDGER_ENTRIES", style = MaterialTheme.typography.labelSmall, color = Gray500)
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "No activity yet",
+            style = MaterialTheme.typography.labelSmall,
+            color = Gray500
+        )
     }
 }
 
@@ -167,3 +304,4 @@ fun formatTimestamp(timestamp: Long): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
+

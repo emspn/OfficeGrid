@@ -1,8 +1,6 @@
 package com.app.officegrid.core.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,6 +18,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.app.officegrid.core.common.presentation.NotificationViewModel
+import com.app.officegrid.core.ui.components.OfficeGridLogo
 import com.app.officegrid.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,120 +44,114 @@ fun AdminMainScreen(
         Screen.AdminCreateTask.route,
         Screen.AdminEditTask.route,
         Screen.TaskDetail.route,
-        Screen.Notifications.route
+        Screen.Notifications.route,
+        Screen.AdminSettings.route,
+        Screen.OrganizationSettings.route
     )
 
     Scaffold(
         containerColor = WarmBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (!isDetailScreen) {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            "OFFICE_GRID", 
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                letterSpacing = 2.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Black
-                            ),
-                            color = DeepCharcoal
-                        ) 
+                CenterAlignedTopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OfficeGridLogo(size = 24.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                "OFFICE_GRID",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    letterSpacing = 2.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 18.sp
+                                ),
+                                color = DeepCharcoal
+                            )
+                        }
                     },
                     actions = {
                         IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
                             BadgedBox(
-                                badge = { 
+                                badge = {
                                     if (unreadNotifications > 0) {
-                                        Badge(
-                                            containerColor = ProfessionalError,
-                                            contentColor = Color.White
-                                        ) {
+                                        Badge(containerColor = ProfessionalError, contentColor = Color.White) {
                                             Text(unreadNotifications.toString())
                                         }
                                     }
                                 }
                             ) {
-                                Icon(Icons.Default.Notifications, null, tint = DeepCharcoal, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Notifications, null, tint = DeepCharcoal, modifier = Modifier.size(24.dp))
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = WarmBackground),
                     windowInsets = WindowInsets.statusBars
                 )
             }
         },
         bottomBar = {
-            Surface(
-                color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
-            ) {
-                NavigationBar(
-                    containerColor = Color.White,
+            if (!isDetailScreen) {
+                // ✅ HERO FIX: Apply navigationBarsPadding here to let white background bleed through
+                Surface(
+                    color = Color.White,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, WarmBorder),
+                    modifier = Modifier.navigationBarsPadding()
                 ) {
-                    items.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-                        NavigationBarItem(
-                            icon = { 
-                                Icon(
-                                    item.icon, 
-                                    null, 
-                                    modifier = Modifier.size(22.dp),
-                                    tint = if (selected) DeepCharcoal else StoneGray
-                                ) 
-                            },
-                            label = { 
-                                Text(
-                                    item.title, 
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 10.sp, 
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                                    ),
-                                    color = if (selected) DeepCharcoal else StoneGray,
-                                    maxLines = 1
-                                ) 
-                            },
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                    NavigationBar(
+                        containerColor = Color.White,
+                        tonalElevation = 0.dp,
+                        windowInsets = WindowInsets(0, 0, 0, 0), // Already handled by Surface padding
+                        modifier = Modifier.height(64.dp) // Professional tight height
+                    ) {
+                        items.forEach { item ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                            NavigationBarItem(
+                                icon = { 
+                                    Icon(
+                                        item.icon, 
+                                        null, 
+                                        modifier = Modifier.size(22.dp),
+                                        tint = if (selected) DeepCharcoal else StoneGray.copy(alpha = 0.6f)
+                                    ) 
+                                },
+                                label = { 
+                                    Text(
+                                        item.title, 
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 8.sp,
+                                            letterSpacing = 0.2.sp,
+                                            fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
+                                            fontFamily = FontFamily.Monospace
+                                        ),
+                                        color = if (selected) DeepCharcoal else StoneGray
+                                    ) 
+                                },
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = Color.Transparent,
-                                selectedIconColor = DeepCharcoal,
-                                unselectedIconColor = StoneGray,
-                                selectedTextColor = DeepCharcoal,
-                                unselectedTextColor = StoneGray
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = DeepCharcoal,
+                                    unselectedIconColor = StoneGray,
+                                    indicatorColor = Color.Transparent
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
-        },
-        floatingActionButton = {
-            if (currentRoute == Screen.AdminTasks.route) {
-                FloatingActionButton(
-                    onClick = { navController.navigate(Screen.AdminCreateTask.route) },
-                    containerColor = DeepCharcoal,
-                    contentColor = Color.White,
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Task", modifier = Modifier.size(24.dp))
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End
+        }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             AdminNavGraph(navController = navController)
         }
     }

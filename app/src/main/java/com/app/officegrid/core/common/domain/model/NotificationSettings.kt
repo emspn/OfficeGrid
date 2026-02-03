@@ -5,5 +5,7 @@ data class NotificationSettings(
     val taskAssigned: Boolean = true,
     val taskUpdated: Boolean = true,
     val taskOverdue: Boolean = true,
-    val remarks: Boolean = true
+    val remarks: Boolean = true,
+    val joinRequests: Boolean = true,
+    val systemNotifications: Boolean = true
 )

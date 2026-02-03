@@ -74,8 +74,9 @@ class TaskRemarkRepositoryImpl @Inject constructor(
 
             val remarkDto = TaskRemarkDto(
                 task_id = taskId,
-                message = message,
-                created_by = user.id
+                user_id = user.id,
+                user_name = user.fullName,
+                content = message
             )
 
             remoteDataSource.insertRemark(remarkDto)
@@ -95,12 +96,18 @@ class TaskRemarkRepositoryImpl @Inject constructor(
 
     override suspend fun syncRemarks(taskId: String): Result<Unit> {
         return try {
+            android.util.Log.d("TaskRemarkRepo", "🔄 Syncing remarks for task: $taskId")
             val remoteRemarks = remoteDataSource.getRemarksForTask(taskId)
+            android.util.Log.d("TaskRemarkRepo", "📥 Fetched ${remoteRemarks.size} remarks from Supabase")
+
             val entities = remoteRemarks.map { it.toEntity() }
             remarkDao.deleteRemarksForTask(taskId)
             remarkDao.insertRemarks(entities)
+
+            android.util.Log.d("TaskRemarkRepo", "✅ Synced ${entities.size} remarks to local DB")
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("TaskRemarkRepo", "❌ Sync failed: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -114,10 +121,10 @@ class TaskRemarkRepositoryImpl @Inject constructor(
     )
 
     private fun TaskRemarkDto.toEntity() = TaskRemarkEntity(
-        id = id ?: "",
+        id = id ?: java.util.UUID.randomUUID().toString(),
         taskId = task_id,
-        message = message,
-        createdBy = created_by,
+        message = content,
+        createdBy = user_name,
         createdAt = 0L // Future: Handle timestamp parsing
     )
 }

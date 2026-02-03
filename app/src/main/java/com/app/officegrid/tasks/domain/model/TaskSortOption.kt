@@ -31,8 +31,8 @@ fun List<Task>.sortByOption(option: TaskSortOption): List<Task> {
         }
         TaskSortOption.TITLE_A_TO_Z -> this.sortedBy { it.title.lowercase() }
         TaskSortOption.TITLE_Z_TO_A -> this.sortedByDescending { it.title.lowercase() }
-        TaskSortOption.CREATED_NEWEST -> this.sortedByDescending { it.id }
-        TaskSortOption.CREATED_OLDEST -> this.sortedBy { it.id }
+        TaskSortOption.CREATED_NEWEST -> this.sortedByDescending { it.createdAt }
+        TaskSortOption.CREATED_OLDEST -> this.sortedBy { it.createdAt }
     }
 }
 

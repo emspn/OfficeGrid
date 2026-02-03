@@ -5,5 +5,9 @@ enum class NotificationType {
     TASK_UPDATED,
     TASK_COMPLETED,
     NEW_REMARK,
-    TASK_OVERDUE
+    TASK_OVERDUE,
+    JOIN_REQUEST,
+    JOIN_APPROVED,
+    JOIN_REJECTED,
+    SYSTEM
 }

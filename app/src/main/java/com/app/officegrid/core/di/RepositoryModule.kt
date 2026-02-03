@@ -10,8 +10,6 @@ import com.app.officegrid.core.common.domain.repository.NotificationRepository
 import com.app.officegrid.core.common.domain.repository.NotificationSettingsRepository
 import com.app.officegrid.dashboard.data.repository.AnalyticsRepositoryImpl
 import com.app.officegrid.dashboard.domain.repository.AnalyticsRepository
-import com.app.officegrid.tasks.data.remote.SupabaseTaskDataSource
-import com.app.officegrid.tasks.data.remote.TaskRemoteDataSource
 import com.app.officegrid.tasks.data.repository.TaskRepositoryImpl
 import com.app.officegrid.tasks.data.repository.TaskRemarkRepositoryImpl
 import com.app.officegrid.tasks.domain.repository.TaskRepository
@@ -39,12 +37,6 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindTaskRemoteDataSource(
-        supabaseTaskDataSource: SupabaseTaskDataSource
-    ): TaskRemoteDataSource
 
     @Binds
     @Singleton

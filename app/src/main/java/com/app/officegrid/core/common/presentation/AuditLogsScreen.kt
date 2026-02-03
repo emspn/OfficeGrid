@@ -3,14 +3,11 @@ package com.app.officegrid.core.common.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -25,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.common.domain.model.AuditLog
 import com.app.officegrid.core.common.domain.model.AuditEventType
 import com.app.officegrid.core.ui.UiState
+import com.app.officegrid.core.ui.AdminSectionHeader
 import com.app.officegrid.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,154 +34,116 @@ fun AuditLogsScreen(
     viewModel: AuditLogViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf<AuditEventType?>(null) }
+    val selectedType by viewModel.selectedType.collectAsState()
+    val dateFilter by viewModel.dateFilter.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    LaunchedEffect(Unit) {
+        viewModel.syncLogs()
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = WarmBackground
     ) {
-        when (val uiState = state) {
-            is UiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
-                }
-            }
-            is UiState.Success -> {
-                val allLogs = uiState.data
-                val filteredLogs = remember(allLogs, searchQuery, selectedFilter) {
-                    allLogs.filter { log ->
-                        val matchesSearch = searchQuery.isEmpty() ||
-                            log.title.contains(searchQuery, ignoreCase = true) ||
-                            log.description.contains(searchQuery, ignoreCase = true) ||
-                            log.userEmail.contains(searchQuery, ignoreCase = true)
-
-                        val matchesFilter = selectedFilter == null || log.eventType == selectedFilter
-
-                        matchesSearch && matchesFilter
+        Box(modifier = Modifier.fillMaxSize()) {
+            when (val uiState = state) {
+                is UiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
                     }
                 }
-
-                PullToRefreshBox(
-                    isRefreshing = false,
-                    onRefresh = viewModel::syncLogs,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                is UiState.Success -> {
+                    PullToRefreshBox(
+                        isRefreshing = false,
+                        onRefresh = viewModel::syncLogs,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        item {
-                            Column(modifier = Modifier.padding(bottom = 24.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text("AUDIT_LOGS", style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Black), color = DeepCharcoal)
-                                        Text("${filteredLogs.size} EVENTS", style = MaterialTheme.typography.labelSmall, color = StoneGray)
-                                    }
-
-                                    IconButton(onClick = { /* Export logs */ }) {
-                                        Icon(Icons.Default.FileDownload, "Export", tint = DeepCharcoal)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Search Bar
-                        item {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("Search logs...", style = MaterialTheme.typography.bodySmall) },
-                                leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Default.Clear, "Clear", modifier = Modifier.size(20.dp))
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(1.dp)
+                        ) {
+                            item {
+                                Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        AdminSectionHeader(
+                                            title = "REGISTRY_LOGS",
+                                            subtitle = "SYSTEM_EVENT_HISTORY"
+                                        )
+                                        IconButton(onClick = viewModel::syncLogs) {
+                                            Icon(Icons.Default.Refresh, null, tint = DeepCharcoal)
                                         }
                                     }
-                                },
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
-                                    focusedBorderColor = DeepCharcoal,
-                                    unfocusedBorderColor = WarmBorder
-                                ),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            Spacer(Modifier.height(16.dp))
-                        }
 
-                        // Filter Chips
-                        item {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                item {
-                                    FilterChip(
-                                        selected = selectedFilter == null,
-                                        onClick = { selectedFilter = null },
-                                        label = { Text("ALL", style = MaterialTheme.typography.labelSmall) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = DeepCharcoal,
-                                            selectedLabelColor = Color.White
+                                    Spacer(modifier = Modifier.height(24.dp))
+
+                                    // Elite Filters
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        AuditFilterChip(
+                                            label = when(selectedType) {
+                                                AuditEventType.CREATE -> "CREATED"
+                                                AuditEventType.STATUS_CHANGE -> "UPDATED"
+                                                AuditEventType.DELETE -> "DELETED"
+                                                else -> "ALL_EVENTS"
+                                            },
+                                            icon = Icons.Default.FilterList,
+                                            modifier = Modifier.weight(1f),
+                                            onClick = { /* Implement menu or cycle */ }
                                         )
-                                    )
-                                }
-
-                                AuditEventType.entries.forEach { eventType ->
-                                    item {
-                                        FilterChip(
-                                            selected = selectedFilter == eventType,
-                                            onClick = { selectedFilter = if (selectedFilter == eventType) null else eventType },
-                                            label = { Text(eventType.name, style = MaterialTheme.typography.labelSmall) },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = when (eventType) {
-                                                    AuditEventType.CREATE -> ProfessionalSuccess
-                                                    AuditEventType.DELETE -> ProfessionalError
-                                                    AuditEventType.STATUS_CHANGE -> ProfessionalWarning
-                                                    else -> DeepCharcoal
-                                                },
-                                                selectedLabelColor = Color.White
-                                            )
+                                        AuditFilterChip(
+                                            label = dateFilter.name,
+                                            icon = Icons.Default.Schedule,
+                                            modifier = Modifier.weight(1f),
+                                            onClick = { /* Implement menu or cycle */ }
                                         )
                                     }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    OutlinedTextField(
+                                        value = searchQuery,
+                                        onValueChange = viewModel::onSearchQueryChange,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        placeholder = { Text("Filter logs...", style = MaterialTheme.typography.bodySmall) },
+                                        leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedContainerColor = Color.White,
+                                            unfocusedContainerColor = Color.White,
+                                            focusedBorderColor = DeepCharcoal,
+                                            unfocusedBorderColor = WarmBorder
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
                                 }
                             }
-                            Spacer(Modifier.height(24.dp))
-                        }
 
-                        if (filteredLogs.isEmpty()) {
-                            item {
-                                ProfessionalEmptyLogsState(
-                                    hasFilters = searchQuery.isNotEmpty() || selectedFilter != null
-                                )
+                            if (uiState.data.isEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillParentMaxHeight(0.6f), contentAlignment = Alignment.Center) {
+                                        Text("NO_RECORDS_FOUND", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+                                    }
+                                }
+                            } else {
+                                items(uiState.data, key = { it.id }) { log ->
+                                    EliteAuditLogRow(log)
+                                }
                             }
-                        } else {
-                            items(filteredLogs, key = { it.id }) { log ->
-                                EliteAuditLogRow(log)
-                            }
+                            
+                            item { Spacer(Modifier.height(100.dp)) }
                         }
                     }
                 }
-            }
-            is UiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "Failed to load audit logs", style = MaterialTheme.typography.bodyLarge, color = ProfessionalError)
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = uiState.message, style = MaterialTheme.typography.bodySmall, color = StoneGray)
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = viewModel::syncLogs) {
-                            Text("Retry")
-                        }
+                is UiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("REGISTRY_ERROR: ${uiState.message}", color = ProfessionalError)
                     }
                 }
             }
@@ -192,14 +152,28 @@ fun AuditLogsScreen(
 }
 
 @Composable
-fun EliteAuditLogRow(log: AuditLog) {
-    val accentColor = remember(log.eventType) {
-        when (log.eventType) {
-            AuditEventType.CREATE -> ProfessionalSuccess
-            AuditEventType.DELETE -> ProfessionalError
-            AuditEventType.STATUS_CHANGE -> ProfessionalWarning
-            else -> Gray900
+private fun AuditFilterChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        color = Color.White,
+        shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, Modifier.size(14.dp), StoneGray)
+            Spacer(Modifier.width(8.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp), color = DeepCharcoal)
         }
+    }
+}
+
+@Composable
+fun EliteAuditLogRow(log: AuditLog) {
+    val accentColor = when (log.eventType) {
+        AuditEventType.CREATE -> ProfessionalSuccess
+        AuditEventType.DELETE -> ProfessionalError
+        else -> DeepCharcoal
     }
 
     Surface(
@@ -207,105 +181,19 @@ fun EliteAuditLogRow(log: AuditLog) {
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(0.5.dp, WarmBorder)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(6.dp)
-                    .background(accentColor, CircleShape)
-            )
-
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+            Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).background(accentColor, CircleShape))
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = log.eventType.name,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
-                        color = accentColor
-                    )
-                    Text(
-                        text = formatTimestamp(log.createdAt),
-                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                        color = Gray500
-                    )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(log.eventType.name, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, fontSize = 8.sp), color = accentColor)
+                    Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(log.createdAt)), style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace), color = StoneGray)
                 }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = log.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
-                    color = Gray900
-                )
-                
-                Text(
-                    text = log.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Gray700,
-                    lineHeight = 18.sp
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = "AUTH_REF: ${log.userEmail}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp),
-                    color = StoneGray
-                )
+                Text(log.title.uppercase(), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black), color = DeepCharcoal)
+                Text(log.description, style = MaterialTheme.typography.bodySmall, color = StoneGray)
+                Spacer(Modifier.height(8.dp))
+                Text("BY: ${log.userEmail}", style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontFamily = FontFamily.Monospace), color = StoneGray)
             }
         }
     }
-}
-
-@Composable
-fun ProfessionalEmptyLogsState(hasFilters: Boolean = false) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 60.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                modifier = Modifier.size(64.dp),
-                color = StoneGray.copy(alpha = 0.1f),
-                shape = CircleShape
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        "📋",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontSize = 32.sp
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                if (hasFilters) "NO_MATCHING_LOGS" else "NO_AUDIT_LOGS_YET",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = DeepCharcoal
-            )
-
-            Text(
-                if (hasFilters) "Try adjusting your filters" else "Activity will appear here",
-                style = MaterialTheme.typography.labelSmall,
-                color = StoneGray
-            )
-        }
-    }
-}
-
-fun formatTimestamp(timestamp: Long): String {
-    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    return sdf.format(Date(timestamp))
 }

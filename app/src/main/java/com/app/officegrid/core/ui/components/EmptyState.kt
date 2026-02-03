@@ -98,7 +98,7 @@ fun EmptyState(
 fun EmptyTasksState(modifier: Modifier = Modifier) {
     EmptyState(
         icon = Icons.Default.TaskAlt,
-        title = "NO_OPERATIONAL_UNITS",
+        title = "No Tasks",
         description = "No tasks found. Create your first task to get started.",
         modifier = modifier
     )
@@ -108,7 +108,7 @@ fun EmptyTasksState(modifier: Modifier = Modifier) {
 fun EmptySearchState(modifier: Modifier = Modifier) {
     EmptyState(
         icon = Icons.Default.SearchOff,
-        title = "NO_RESULTS_FOUND",
+        title = "No Results Found",
         description = "Try adjusting your search or filters to find what you're looking for.",
         modifier = modifier
     )
@@ -118,7 +118,7 @@ fun EmptySearchState(modifier: Modifier = Modifier) {
 fun EmptyTeamState(modifier: Modifier = Modifier) {
     EmptyState(
         icon = Icons.Default.Groups,
-        title = "NO_TEAM_MEMBERS",
+        title = "No Team Members",
         description = "No team members found. Invite employees to join your workspace.",
         modifier = modifier
     )
@@ -128,7 +128,7 @@ fun EmptyTeamState(modifier: Modifier = Modifier) {
 fun EmptyNotificationsState(modifier: Modifier = Modifier) {
     EmptyState(
         icon = Icons.Default.NotificationsNone,
-        title = "NO_NOTIFICATIONS",
+        title = "No Notifications",
         description = "You're all caught up! No new notifications at this time.",
         modifier = modifier
     )
@@ -142,9 +142,9 @@ fun ErrorState(
 ) {
     EmptyState(
         icon = Icons.Default.ErrorOutline,
-        title = "SYSTEM_ERROR",
+        title = "Something Went Wrong",
         description = message,
-        actionLabel = if (onRetry != null) "RETRY" else null,
+        actionLabel = if (onRetry != null) "Retry" else null,
         onActionClick = onRetry,
         modifier = modifier
     )
@@ -157,10 +157,11 @@ fun NoInternetState(
 ) {
     EmptyState(
         icon = Icons.Default.CloudOff,
-        title = "CONNECTION_LOST",
+        title = "No Connection",
         description = "No internet connection. Please check your network and try again.",
-        actionLabel = "RETRY",
+        actionLabel = "Retry",
         onActionClick = onRetry,
         modifier = modifier
     )
 }
+

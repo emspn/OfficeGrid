@@ -12,6 +12,6 @@ data class TaskDto(
     val assigned_to: String,
     val created_by: String,
     val company_id: String,
-    val due_date: Long,
-    val created_at: String = ""
+    val due_date: String,  // ISO timestamp string for Supabase
+    val created_at: String? = null
 )

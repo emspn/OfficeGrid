@@ -45,7 +45,7 @@ fun TaskTemplateSelectionScreen(
                 title = {
                     Column {
                         Text(
-                            "TASK_TEMPLATES",
+                            "Task Templates",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp
@@ -326,3 +326,4 @@ private fun getCategoryIcon(category: TemplateCategory): ImageVector {
         TemplateCategory.CUSTOM -> Icons.Default.Apps
     }
 }
+

@@ -15,5 +15,6 @@ data class TaskEntity(
     val assignedTo: String,
     val createdBy: String,
     val companyId: String,
-    val dueDate: Long
+    val dueDate: Long,
+    val createdAt: Long = 0L
 )

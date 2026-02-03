@@ -329,3 +329,4 @@ object TaskTemplates {
         return ALL_TEMPLATES.sortedByDescending { it.popularity }.take(limit)
     }
 }
+
