@@ -14,8 +14,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Manages local push notifications using Android's NotificationManager
- * Works with Supabase Realtime for background notification delivery
+ * 🚀 ULTRA PRODUCTION-READY PUSH NOTIFICATION MANAGER
+ * Manages notification delivery, channels, and intent routing with deep safety.
  */
 @Singleton
 class PushNotificationManager @Inject constructor(
@@ -27,39 +27,40 @@ class PushNotificationManager @Inject constructor(
         createNotificationChannels()
     }
 
-    /**
-     * Create notification channels for Android 8.0+
-     */
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // High priority channel for task assignments and urgent updates
+            // 🎯 URGENT: Mission Assignments & Authorizations
             val urgentChannel = NotificationChannel(
                 CHANNEL_URGENT,
-                "Task Assignments",
+                "Mission Critical Updates",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifications for new task assignments and urgent updates"
+                description = "High-priority alerts for mission assignments and access requests."
                 enableVibration(true)
                 enableLights(true)
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
 
-            // Default priority channel for general updates
+            // 📝 DEFAULT: Communications & Status Logs
             val defaultChannel = NotificationChannel(
                 CHANNEL_DEFAULT,
-                "Task Updates",
+                "Operational Communications",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Notifications for task updates and comments"
+                description = "Standard updates for mission status and collaborator remarks."
                 enableVibration(true)
+                setShowBadge(true)
             }
 
-            // Low priority channel for informational messages
+            // ℹ️ INFO: System Maintenance
             val infoChannel = NotificationChannel(
                 CHANNEL_INFO,
-                "Information",
+                "System Registry Info",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "General information and reminders"
+                description = "General system information and registry maintenance alerts."
+                setShowBadge(false)
             }
 
             notificationManager.createNotificationChannels(
@@ -68,9 +69,6 @@ class PushNotificationManager @Inject constructor(
         }
     }
 
-    /**
-     * Show a notification to the user
-     */
     fun showNotification(
         id: String,
         title: String,
@@ -79,15 +77,21 @@ class PushNotificationManager @Inject constructor(
         data: Map<String, String> = emptyMap()
     ) {
         val channelId = getChannelIdForType(type)
-        val priority = getPriorityForType(type)
-
-        // Create intent for when notification is tapped
+        
+        // 🔥 PRODUCTION-GRADE INTENT ROUTING
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            // Add deep link data for navigation
+            // Clears activity stack to handle fresh entry on tap
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            
+            // Deep Link Parameters
             data.forEach { (key, value) -> putExtra(key, value) }
-            putExtra("notification_type", type.name)
-            putExtra("notification_id", id)
+            putExtra("EXTRA_NOTIF_ID", id)
+            putExtra("EXTRA_NOTIF_TYPE", type.name)
+            
+            // Rebranding sync
+            if (data.containsKey("task_id")) {
+                putExtra("MISSION_ID", data["task_id"])
+            }
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -97,38 +101,25 @@ class PushNotificationManager @Inject constructor(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // Build the notification
         val builder = NotificationCompat.Builder(context, channelId)
-        builder.setSmallIcon(android.R.drawable.ic_dialog_info)
-        builder.setContentTitle(title)
-        builder.setContentText(message)
-        builder.setStyle(NotificationCompat.BigTextStyle().bigText(message))
-        builder.priority = priority
-        builder.setAutoCancel(true)
-        builder.setContentIntent(pendingIntent)
-        val notification = builder.build()
+            // Tactical Iconography
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle(title.uppercase()) // Force professional uppercase
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(getPriorityForType(type))
+            .setCategory(getCategoryForType(type))
+            .setAutoCancel(true)
+            .setDefaults(android.app.Notification.DEFAULT_ALL)
+            .setContentIntent(pendingIntent)
+            // Color branding
+            .setColor(0xFF1A1A1A.toInt()) // DeepCharcoal
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
-        // Show the notification
-        notificationManager.notify(id.hashCode(), notification)
+        // Show with unique hash to prevent overwriting other notifications
+        notificationManager.notify(id.hashCode(), builder.build())
     }
 
-    /**
-     * Cancel a specific notification
-     */
-    fun cancelNotification(id: String) {
-        notificationManager.cancel(id.hashCode())
-    }
-
-    /**
-     * Cancel all notifications
-     */
-    fun cancelAllNotifications() {
-        notificationManager.cancelAll()
-    }
-
-    /**
-     * Get notification channel based on type
-     */
     private fun getChannelIdForType(type: NotificationType): String {
         return when (type) {
             NotificationType.TASK_ASSIGNED,
@@ -143,26 +134,26 @@ class PushNotificationManager @Inject constructor(
         }
     }
 
-    /**
-     * Get notification priority based on type
-     */
     private fun getPriorityForType(type: NotificationType): Int {
         return when (type) {
             NotificationType.TASK_ASSIGNED,
             NotificationType.TASK_OVERDUE,
             NotificationType.JOIN_REQUEST -> NotificationCompat.PRIORITY_HIGH
-            NotificationType.TASK_UPDATED,
-            NotificationType.TASK_COMPLETED,
-            NotificationType.NEW_REMARK,
-            NotificationType.JOIN_APPROVED,
-            NotificationType.JOIN_REJECTED -> NotificationCompat.PRIORITY_DEFAULT
-            NotificationType.SYSTEM -> NotificationCompat.PRIORITY_LOW
+            else -> NotificationCompat.PRIORITY_DEFAULT
+        }
+    }
+
+    private fun getCategoryForType(type: NotificationType): String {
+        return when (type) {
+            NotificationType.TASK_ASSIGNED -> NotificationCompat.CATEGORY_MESSAGE
+            NotificationType.JOIN_REQUEST -> NotificationCompat.CATEGORY_EVENT
+            else -> NotificationCompat.CATEGORY_STATUS
         }
     }
 
     companion object {
-        private const val CHANNEL_URGENT = "officegrid_urgent"
-        private const val CHANNEL_DEFAULT = "officegrid_default"
-        private const val CHANNEL_INFO = "officegrid_info"
+        private const val CHANNEL_URGENT = "officegrid_urgent_v2"
+        private const val CHANNEL_DEFAULT = "officegrid_default_v2"
+        private const val CHANNEL_INFO = "officegrid_info_v2"
     }
 }

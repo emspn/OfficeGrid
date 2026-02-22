@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTaskScreen(
+    onNavigateToSuccess: (String) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: CreateTaskViewModel = hiltViewModel()
 ) {
@@ -47,11 +48,10 @@ fun CreateTaskScreen(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // ⚡ NEW: Refresh employees on EVERY screen resume
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                android.util.Log.d("CreateTaskScreen", "⚡ Screen resumed - refreshing employees")
+                android.util.Log.d("CreateTaskScreen", "⚡ Screen resumed - refreshing operatives")
                 viewModel.refreshEmployees()
             }
         }
@@ -70,9 +70,11 @@ fun CreateTaskScreen(
                     }
                 }
                 is UiEvent.Navigate -> {
-                    onNavigateBack()
+                    onNavigateToSuccess(event.route)
                 }
-                else -> Unit
+                UiEvent.SessionExpired -> {
+                    // Logic for session expiration if needed, or simply do nothing here
+                }
             }
         }
     }
@@ -82,7 +84,7 @@ fun CreateTaskScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AdminTopBar(
-                title = "Create Task",
+                title = "Create Assignment",
                 onBackClick = onNavigateBack
             )
         }
@@ -96,11 +98,10 @@ fun CreateTaskScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 AdminSectionHeader(
-                    title = "Task Details",
-                    subtitle = "Enter task information and assign to team member"
+                    title = "Assignment Specifications",
+                    subtitle = "Initialize operational parameters and assign to operative"
                 )
 
-                // 1. Core Identifiers Card
                 Surface(
                     color = Color.White,
                     shape = RoundedCornerShape(12.dp),
@@ -110,20 +111,20 @@ fun CreateTaskScreen(
                         OutlinedTextField(
                             value = title,
                             onValueChange = viewModel::onTitleChange,
-                            placeholder = { Text("Assignment Title") },
+                            placeholder = { Text("MISSION_TITLE") },
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent
                             ),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace),
                             singleLine = true
                         )
                         HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                         OutlinedTextField(
                             value = description,
                             onValueChange = viewModel::onDescriptionChange,
-                            placeholder = { Text("Detailed Operational Specifications...") },
+                            placeholder = { Text("DETAILED_SPECIFICATIONS...") },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
@@ -134,19 +135,17 @@ fun CreateTaskScreen(
                     }
                 }
 
-                // 2. Deployment Metadata
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Settings", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
+                    Text("REGISTRY_PARAMETERS", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
                     Surface(
                         color = Color.White,
                         shape = RoundedCornerShape(12.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
                     ) {
                         Column {
-                            // Priority - Properly Anchored
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 AdminFormRow(
-                                    label = "Priority",
+                                    label = "Priority Level",
                                     value = priority.name,
                                     icon = Icons.Default.Flag,
                                     onClick = { priorityExpanded = true }
@@ -170,13 +169,12 @@ fun CreateTaskScreen(
                             
                             HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                             
-                            // Operative - Properly Anchored
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 val selectedEmployee = employees.find { it.id == assignedTo }
                                 AdminFormRow(
-                                    label = "Assign To",
-                                    value = selectedEmployee?.name ?: "Select Team Member",
-                                    icon = Icons.Default.Person,
+                                    label = "Assign To Operative",
+                                    value = selectedEmployee?.name ?: "Select Mission Lead",
+                                    icon = Icons.Default.Shield,
                                     onClick = { employeeExpanded = true }
                                 )
                                 DropdownMenu(
@@ -186,7 +184,7 @@ fun CreateTaskScreen(
                                 ) {
                                     if (employees.isEmpty()) {
                                         DropdownMenuItem(
-                                            text = { Text("No team members available", style = MaterialTheme.typography.labelSmall) },
+                                            text = { Text("No authorized operatives available", style = MaterialTheme.typography.labelSmall) },
                                             onClick = { employeeExpanded = false }
                                         )
                                     } else {
@@ -210,20 +208,18 @@ fun CreateTaskScreen(
 
                             HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
 
-                            // Date
                             val dateFormat = remember { java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()) }
                             val formattedDate = remember(dueDate) { dateFormat.format(java.util.Date(dueDate)) }
                             AdminFormRow(
-                                label = "Due Date",
+                                label = "Completion Deadline",
                                 value = formattedDate,
-                                icon = Icons.Default.CalendarToday,
+                                icon = Icons.Default.Timer,
                                 onClick = { showDatePicker = true }
                             )
                         }
                     }
                 }
 
-                // Initialize Button
                 Button(
                     onClick = viewModel::createTask,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -234,14 +230,13 @@ fun CreateTaskScreen(
                     if (state.isLoading) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("Create Task", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp))
+                        Text("INITIALIZE MISSION", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp))
                     }
                 }
                 
                 Spacer(Modifier.height(32.dp))
             }
 
-            // Date Picker
             if (showDatePicker) {
                 val datePickerState = rememberDatePickerState(initialSelectedDateMillis = dueDate)
                 DatePickerDialog(

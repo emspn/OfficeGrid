@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -29,17 +30,20 @@ import com.app.officegrid.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeMainScreen(
-    viewModel: com.app.officegrid.employee.presentation.workspace_list.WorkspaceViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
-    notificationViewModel: NotificationViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    viewModel: com.app.officegrid.employee.presentation.workspace_list.WorkspaceViewModel = hiltViewModel(),
+    notificationViewModel: NotificationViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    var showJoinDialog by remember { mutableStateOf(false) }
+    
+    val showJoinDialog by viewModel.showJoinDialog.collectAsState()
     val unreadNotifications by notificationViewModel.unreadCount.collectAsState()
+    val isJoining by viewModel.isJoining.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // ✅ CENTRALIZED EVENT COLLECTION: ONLY HERE
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -115,9 +119,9 @@ fun EmployeeMainScreen(
                         } == true
 
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.Business, contentDescription = "Workspaces", modifier = Modifier.size(22.dp)) },
+                            icon = { Icon(Icons.Default.Business, contentDescription = "Nodes", modifier = Modifier.size(22.dp)) },
                             label = {
-                                Text("WORKSPACES", style = MaterialTheme.typography.labelSmall.copy(
+                                Text("NODES", style = MaterialTheme.typography.labelSmall.copy(
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = if (workspacesSelected) FontWeight.Bold else FontWeight.Medium,
                                     fontSize = 10.sp
@@ -184,7 +188,7 @@ fun EmployeeMainScreen(
                     onWorkspaceClick = { workspaceId ->
                         navController.navigate("workspace_detail/$workspaceId")
                     },
-                    onAddWorkspace = { showJoinDialog = true },
+                    onAddWorkspace = { viewModel.toggleJoinDialog(true) },
                     onNavigateToProfile = { navController.navigate("profile") },
                     viewModel = viewModel
                 )
@@ -211,7 +215,6 @@ fun EmployeeMainScreen(
                 EmployeeSettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
 
-            // ✅ FIXED: Added notifications route to prevent crash
             composable("notifications") {
                 NotificationScreen(onNavigateBack = { navController.popBackStack() })
             }
@@ -220,11 +223,11 @@ fun EmployeeMainScreen(
 
     if (showJoinDialog) {
         JoinWorkspaceDialog(
-            onDismiss = { showJoinDialog = false },
+            onDismiss = { viewModel.toggleJoinDialog(false) },
             onJoin = { code ->
                 viewModel.joinWorkspace(code)
-                showJoinDialog = false
-            }
+            },
+            isLoading = isJoining
         )
     }
 }

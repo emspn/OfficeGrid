@@ -10,6 +10,8 @@ data class AnalyticsEntity(
     val completedTasks: Int,
     val inProgressTasks: Int,
     val pendingTasks: Int,
+    val totalEmployees: Int,
+    val pendingApprovals: Int,
     val overdueTasks: Int,
     val tasksPerEmployeeJson: String,
     val completedTasksPerEmployeeJson: String,

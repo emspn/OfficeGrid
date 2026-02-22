@@ -2,6 +2,7 @@ package com.app.officegrid.tasks.presentation.task_list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.officegrid.auth.domain.model.User
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
 import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.core.ui.UiState
@@ -18,9 +19,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
-@Suppress("unused")
+enum class TaskTimelineFilter {
+    ALL, TODAY, THIS_WEEK, MONTHLY, YEARLY, CUSTOM
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TaskListViewModel @Inject constructor(
@@ -44,45 +49,73 @@ class TaskListViewModel @Inject constructor(
     private val _sortOption = MutableStateFlow(TaskSortOption.DUE_DATE_ASC)
     val sortOption: StateFlow<TaskSortOption> = _sortOption.asStateFlow()
 
+    // ✅ Default to MONTHLY as requested
+    private val _timelineFilter = MutableStateFlow(TaskTimelineFilter.MONTHLY)
+    val timelineFilter: StateFlow<TaskTimelineFilter> = _timelineFilter.asStateFlow()
+
+    private val _dateRange = MutableStateFlow<Pair<Long, Long>?>(null)
+    val dateRange: StateFlow<Pair<Long, Long>?> = _dateRange.asStateFlow()
+
+    val currentUser: StateFlow<User?> = getCurrentUserUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
     val state: StateFlow<UiState<List<Task>>> = combine(
-        getCurrentUserUseCase(),
+        currentUser,
         _selectedStatus,
         _selectedPriority,
         _searchQuery,
-        _sortOption
-    ) { user, status, priority, query, sortOption ->
-        listOf(user, status, priority, query, sortOption)
+        _sortOption,
+        _timelineFilter,
+        _dateRange
+    ) { args: Array<Any?> ->
+        FilterParams(
+            user = args[0] as User?,
+            status = args[1] as TaskStatus?,
+            priority = args[2] as TaskPriority?,
+            query = args[3] as String,
+            sortOption = args[4] as TaskSortOption,
+            timeline = args[5] as TaskTimelineFilter,
+            range = @Suppress("UNCHECKED_CAST") (args[6] as Pair<Long, Long>?)
+        )
     }.flatMapLatest { params ->
-        val user = params[0] as com.app.officegrid.auth.domain.model.User?
-        val status = params[1] as TaskStatus?
-        val priority = params[2] as TaskPriority?
-        val query = params[3] as String
-        val sortOption = params[4] as TaskSortOption
-
-        val userId = user?.id ?: "anonymous"
+        val userId = params.user?.id ?: "anonymous"
         getTasksUseCase(userId).map { tasks ->
             var filteredTasks = tasks
 
-            // Filter by status
-            if (status != null) {
-                filteredTasks = filteredTasks.filter { it.status == status }
+            if (params.status != null) {
+                filteredTasks = filteredTasks.filter { it.status == params.status }
             }
 
-            // Filter by priority
-            if (priority != null) {
-                filteredTasks = filteredTasks.filter { it.priority == priority }
+            if (params.priority != null) {
+                filteredTasks = filteredTasks.filter { it.priority == params.priority }
             }
 
-            // Filter by search query
-            if (query.isNotBlank()) {
-                filteredTasks = filteredTasks.filter {
-                    it.title.contains(query, ignoreCase = true) ||
-                    it.description.contains(query, ignoreCase = true)
+            filteredTasks = when (params.timeline) {
+                TaskTimelineFilter.ALL -> filteredTasks
+                TaskTimelineFilter.TODAY -> filterByDays(filteredTasks, 0)
+                TaskTimelineFilter.THIS_WEEK -> filterByDays(filteredTasks, 7)
+                TaskTimelineFilter.MONTHLY -> filterByDays(filteredTasks, 30)
+                TaskTimelineFilter.YEARLY -> filterByDays(filteredTasks, 365)
+                TaskTimelineFilter.CUSTOM -> {
+                    val range = params.range
+                    if (range != null) {
+                        filteredTasks.filter { it.dueDate in range.first..range.second }
+                    } else filteredTasks
                 }
             }
 
-            // Apply sorting
-            filteredTasks.sortByOption(sortOption)
+            if (params.query.isNotBlank()) {
+                filteredTasks = filteredTasks.filter {
+                    it.title.contains(params.query, ignoreCase = true) ||
+                    it.description.contains(params.query, ignoreCase = true)
+                }
+            }
+
+            filteredTasks.sortByOption(params.sortOption)
         }
     }.asUiState()
     .stateIn(
@@ -91,17 +124,41 @@ class TaskListViewModel @Inject constructor(
         initialValue = UiState.Loading
     )
 
+    private fun filterByDays(tasks: List<Task>, days: Int): List<Task> {
+        val calendar = Calendar.getInstance()
+        val now = calendar.timeInMillis
+        
+        return if (days == 0) {
+            val startOfDay = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val endOfDay = startOfDay + 86400000
+            tasks.filter { it.dueDate in startOfDay..endOfDay }
+        } else {
+            calendar.add(Calendar.DAY_OF_YEAR, days)
+            val end = calendar.timeInMillis
+            tasks.filter { it.dueDate in now..end }
+        }
+    }
+
     init {
-        // Auto-sync tasks on initialization
         syncTasks()
+    }
+
+    fun onTimelineFilterSelected(filter: TaskTimelineFilter) {
+        _timelineFilter.value = filter
+    }
+
+    fun onDateRangeSelected(start: Long, end: Long) {
+        _dateRange.value = start to end
+        _timelineFilter.value = TaskTimelineFilter.CUSTOM
     }
 
     fun onStatusFilterSelected(status: TaskStatus?) {
         _selectedStatus.value = status
-    }
-
-    fun onPriorityFilterSelected(priority: TaskPriority?) {
-        _selectedPriority.value = priority
     }
 
     fun onSearchQueryChange(query: String) {
@@ -122,35 +179,36 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
-    fun deleteTask(taskId: String) {
-        viewModelScope.launch {
-            repository.deleteTask(taskId)
-                .onSuccess {
-                    _events.send(UiEvent.ShowMessage("Task deleted successfully"))
-                }
-                .onFailure { error ->
-                    _events.send(UiEvent.ShowMessage(error.message ?: "Failed to delete task"))
-                }
-        }
-    }
-
     fun updateTaskStatus(taskId: String, newStatus: TaskStatus) {
         viewModelScope.launch {
             repository.updateTaskStatus(taskId, newStatus)
-                .onSuccess {
-                    _events.send(UiEvent.ShowMessage("Status updated"))
-                }
-                .onFailure { error ->
-                    _events.send(UiEvent.ShowMessage(error.message ?: "Failed to update status"))
-                }
+                .onSuccess { _events.send(UiEvent.ShowMessage("Status updated")) }
+                .onFailure { _events.send(UiEvent.ShowMessage(it.message ?: "Sync failed")) }
+        }
+    }
+
+    fun deleteTask(taskId: String) {
+        viewModelScope.launch {
+            repository.deleteTask(taskId)
+                .onSuccess { _events.send(UiEvent.ShowMessage("Unit removed")) }
+                .onFailure { _events.send(UiEvent.ShowMessage("Deletion failed")) }
         }
     }
 
     fun syncTasks() {
         viewModelScope.launch {
-            val user = getCurrentUserUseCase().first() ?: return@launch
+            val user = currentUser.value ?: return@launch
             repository.syncTasks(user.id)
         }
     }
-}
 
+    private data class FilterParams(
+        val user: User?,
+        val status: TaskStatus?,
+        val priority: TaskPriority?,
+        val query: String,
+        val sortOption: TaskSortOption,
+        val timeline: TaskTimelineFilter,
+        val range: Pair<Long, Long>?
+    )
+}

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,7 +37,6 @@ fun EmployeeDashboardScreen(
     val dashboardState by viewModel.dashboardData.collectAsState()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // Sync on screen resume
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
@@ -61,7 +61,7 @@ fun EmployeeDashboardScreen(
             }
             is UiState.Error -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Error: ${state.message}", color = ProfessionalError, style = MaterialTheme.typography.labelSmall)
+                    Text("ERROR: ${state.message}", color = ProfessionalError, style = MaterialTheme.typography.labelSmall)
                 }
             }
             is UiState.Success -> {
@@ -95,23 +95,21 @@ private fun EmployeeDashboardContent(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             AdminSectionHeader(
-                title = "Dashboard",
-                subtitle = "ACTIVE_PERFORMANCE_METRICS"
+                title = "Operative Hub",
+                subtitle = "MISSION_PERFORMANCE_METRICS"
             )
 
-            // Elite Stats Matrix
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    EliteStatBox(label = "TOTAL_UNITS", value = data.totalTasks.toString(), modifier = Modifier.weight(1f))
-                    EliteStatBox(label = "TODO", value = data.todoTasks.toString(), modifier = Modifier.weight(1f))
+                    EliteStatBox(label = "TOTAL_ASSIGNMENTS", value = data.totalTasks.toString(), modifier = Modifier.weight(1f))
+                    EliteStatBox(label = "PENDING_OPS", value = data.todoTasks.toString(), modifier = Modifier.weight(1f))
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    EliteStatBox(label = "IN_PROGRESS", value = data.inProgressTasks.toString(), color = ProfessionalWarning, modifier = Modifier.weight(1f))
-                    EliteStatBox(label = "FINALIZED", value = data.completedTasks.toString(), color = ProfessionalSuccess, modifier = Modifier.weight(1f))
+                    EliteStatBox(label = "IN_DEPLOYMENT", value = data.inProgressTasks.toString(), color = ProfessionalWarning, modifier = Modifier.weight(1f))
+                    EliteStatBox(label = "AUTHORIZED_FINALIZE", value = data.completedTasks.toString(), color = ProfessionalSuccess, modifier = Modifier.weight(1f))
                 }
             }
 
-            // Performance Analysis
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -125,7 +123,7 @@ private fun EmployeeDashboardContent(
                         verticalAlignment = Alignment.Bottom
                     ) {
                         Text(
-                            "COMPLETION_RATE",
+                            "EFFICIENCY_QUOTIENT",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
                             color = StoneGray
                         )
@@ -146,16 +144,15 @@ private fun EmployeeDashboardContent(
                 }
             }
 
-            // Recent Stream
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "RECENT_ASSIGNMENTS",
+                    "INCOMING_DATA_STREAM",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
                     color = StoneGray
                 )
 
                 if (data.recentTasks.isEmpty()) {
-                    Text("No active assignments in stream.", style = MaterialTheme.typography.bodySmall, color = StoneGray)
+                    Text("No active missions detected.", style = MaterialTheme.typography.bodySmall, color = StoneGray)
                 } else {
                     data.recentTasks.forEach { task ->
                         EliteDashboardTaskRow(task, onClick = { onTaskClick(task.id) })
@@ -201,7 +198,7 @@ private fun EliteDashboardTaskRow(task: com.app.officegrid.tasks.domain.model.Ta
             Box(Modifier.size(6.dp).background(statusColor, androidx.compose.foundation.shape.CircleShape))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(task.title.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black), color = DeepCharcoal)
+                Text(task.title.uppercase(), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace), color = DeepCharcoal)
                 Text(task.status.name, style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontFamily = FontFamily.Monospace), color = StoneGray)
             }
             Icon(Icons.Default.ChevronRight, null, tint = WarmBorder, modifier = Modifier.size(16.dp))

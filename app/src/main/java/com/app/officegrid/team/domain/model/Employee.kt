@@ -6,7 +6,8 @@ data class Employee(
     val email: String,
     val role: String,
     val companyId: String,
-    val status: EmployeeStatus
+    val status: EmployeeStatus,
+    val companyName: String? = null // Added companyName to domain model
 )
 
 enum class EmployeeStatus {

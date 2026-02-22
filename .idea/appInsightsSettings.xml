@@ -9,10 +9,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.app.officegrid" />
+                  <option name="mobileSdkAppId" value="1:37383240176:android:87ced7d11efe0508bb4535" />
+                  <option name="projectId" value="officegrid-3e0dc" />
+                  <option name="projectNumber" value="37383240176" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -1,13 +1,16 @@
 package com.app.officegrid.tasks.data.remote
 
+import com.app.officegrid.tasks.data.remote.dto.TaskRemarkDto
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,28 +18,36 @@ import javax.inject.Singleton
 class TaskRemarkRealtimeDataSource @Inject constructor(
     private val realtime: Realtime
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun subscribeToRemarkInserts(): Flow<TaskRemarkDto> {
-        val realtime = realtime ?: throw Exception("Supabase Realtime not initialized")
-
         val channel = realtime.channel("task_remarks_inserts")
-
-        return channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+        
+        // Define flow BEFORE subscription to avoid IllegalStateException
+        val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "task_remarks"
+        }
+
+        return changeFlow.onStart {
+            channel.subscribe()
+            Timber.d("REALTIME: Subscribed to task_remarks inserts")
         }.map { action ->
-            Json.decodeFromJsonElement<TaskRemarkDto>(action.record)
+            json.decodeFromJsonElement<TaskRemarkDto>(action.record)
         }
     }
 
     fun subscribeToRemarkDeletes(): Flow<String> {
-        val realtime = realtime ?: throw Exception("Supabase Realtime not initialized")
-
         val channel = realtime.channel("task_remarks_deletes")
 
-        return channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
+        val changeFlow = channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
             table = "task_remarks"
+        }
+
+        return changeFlow.onStart {
+            channel.subscribe()
+            Timber.d("REALTIME: Subscribed to task_remarks deletes")
         }.map { action ->
-            action.oldRecord["id"]?.toString() ?: ""
+            action.oldRecord["id"]?.toString()?.removeSurrounding("\"") ?: ""
         }
     }
 }
-

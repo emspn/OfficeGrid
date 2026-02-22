@@ -3,6 +3,7 @@ package com.app.officegrid.core.common.data.repository
 import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.core.common.data.local.AuditLogDao
 import com.app.officegrid.core.common.data.local.AuditLogEntity
+import com.app.officegrid.core.common.data.remote.dto.AuditLogDto
 import com.app.officegrid.core.common.domain.model.AuditLog
 import com.app.officegrid.core.common.domain.model.AuditEventType
 import com.app.officegrid.core.common.domain.repository.AuditLogRepository
@@ -10,23 +11,9 @@ import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.Serializable
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
-
-@Serializable
-data class AuditLogDto(
-    val id: String? = null,
-    val action: String,
-    val entity_type: String,
-    val entity_id: String? = null,
-    val user_id: String,
-    val user_name: String,
-    val details: String? = null,
-    val company_id: String,
-    val created_at: String? = null
-)
 
 @Singleton
 class AuditLogRepositoryImpl @Inject constructor(

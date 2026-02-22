@@ -47,7 +47,7 @@ fun EmployeeProfileScreen(
             }
             is UiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Error loading profile", color = ProfessionalError, style = MaterialTheme.typography.labelSmall)
+                    Text(text = "Error loading operative profile", color = ProfessionalError, style = MaterialTheme.typography.labelSmall)
                 }
             }
             is UiState.Success -> {
@@ -126,7 +126,7 @@ private fun EmployeeProfileContent(
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "NODE: ${profile.role.uppercase()}",
+                            text = "STATUS: ${profile.role.uppercase()}",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
                             color = ProfessionalSuccess
@@ -144,7 +144,7 @@ private fun EmployeeProfileContent(
                             Icon(Icons.Default.VpnKey, null, tint = Color.White.copy(0.5f), modifier = Modifier.size(12.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = profile.companyId.take(8).uppercase(),
+                                text = "NODE_" + profile.companyId.take(8).uppercase(),
                                 style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                                 color = Color.White
                             )
@@ -159,7 +159,7 @@ private fun EmployeeProfileContent(
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
 
             Text(
-                text = "Settings",
+                text = "OPERATIVE_CONFIGURATION",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
                 color = StoneGray
             )
@@ -168,22 +168,22 @@ private fun EmployeeProfileContent(
 
             EmployeeMenuItem(
                 icon = Icons.Default.Settings,
-                title = "App Settings",
-                subtitle = "Alert preferences and UI theme",
+                title = "Node Parameters",
+                subtitle = "Alert filters and UI theme",
                 onClick = onNavigateToSettings
             )
 
             EmployeeMenuItem(
                 icon = Icons.Default.Security,
-                title = "Privacy & Security",
-                subtitle = "Manage credentials and session",
+                title = "Security Clearances",
+                subtitle = "Credential management",
                 onClick = { /* Security logic */ }
             )
 
             EmployeeMenuItem(
                 icon = Icons.Default.HelpCenter,
-                title = "Node Support",
-                subtitle = "Contact organization administrator",
+                title = "Central Support",
+                subtitle = "Contact node administrator",
                 onClick = { /* Support logic */ }
             )
 
@@ -199,7 +199,7 @@ private fun EmployeeProfileContent(
             ) {
                 Icon(Icons.Default.Logout, null, tint = ProfessionalError, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(12.dp))
-                Text("Log Out", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black), color = ProfessionalError)
+                Text("TERMINATE_SESSION", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black), color = ProfessionalError)
             }
 
             Spacer(modifier = Modifier.height(40.dp))

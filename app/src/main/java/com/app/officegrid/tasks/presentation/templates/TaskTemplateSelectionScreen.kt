@@ -45,14 +45,14 @@ fun TaskTemplateSelectionScreen(
                 title = {
                     Column {
                         Text(
-                            "Task Templates",
+                            "Mission Templates",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp
                             )
                         )
                         Text(
-                            "Start faster with pre-built workflows",
+                            "Accelerate deployments with pre-built flows",
                             style = MaterialTheme.typography.labelSmall,
                             color = StoneGray
                         )
@@ -74,13 +74,11 @@ fun TaskTemplateSelectionScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Category Filter
             CategoryFilterRow(
                 selectedCategory = selectedCategory,
                 onCategorySelected = { selectedCategory = it }
             )
 
-            // Templates List
             LazyColumn(
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -93,13 +91,13 @@ fun TaskTemplateSelectionScreen(
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
+                                null,
                                 tint = ProfessionalSuccess,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "MOST_POPULAR",
+                                "HIGH_PRIORITY_SCHEMATICS",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
@@ -130,12 +128,12 @@ private fun CategoryFilterRow(
     data class CategoryItem(val category: TemplateCategory?, val label: String, val icon: ImageVector)
 
     val categories = listOf(
-        CategoryItem(null, "All", Icons.Default.Apps),
+        CategoryItem(null, "ALL", Icons.Default.Apps),
         CategoryItem(TemplateCategory.CLIENT_ONBOARDING, "Clients", Icons.Default.Business),
-        CategoryItem(TemplateCategory.EMPLOYEE_ONBOARDING, "Employees", Icons.Default.People),
-        CategoryItem(TemplateCategory.BUG_FIX_WORKFLOW, "Bug Fix", Icons.Default.BugReport),
-        CategoryItem(TemplateCategory.SPRINT_PLANNING, "Sprint", Icons.Default.CalendarMonth),
-        CategoryItem(TemplateCategory.MARKETING_CAMPAIGN, "Marketing", Icons.Default.Campaign)
+        CategoryItem(TemplateCategory.EMPLOYEE_ONBOARDING, "Operatives", Icons.Default.People),
+        CategoryItem(TemplateCategory.BUG_FIX_WORKFLOW, "Technical", Icons.Default.BugReport),
+        CategoryItem(TemplateCategory.SPRINT_PLANNING, "Deployment", Icons.Default.CalendarMonth),
+        CategoryItem(TemplateCategory.MARKETING_CAMPAIGN, "Engagement", Icons.Default.Campaign)
     )
 
     LazyRow(
@@ -148,7 +146,7 @@ private fun CategoryFilterRow(
                 onClick = { onCategorySelected(item.category) },
                 label = {
                     Text(
-                        item.label,
+                        item.label.uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -157,7 +155,7 @@ private fun CategoryFilterRow(
                 leadingIcon = {
                     Icon(
                         item.icon,
-                        contentDescription = null,
+                        null,
                         modifier = Modifier.size(16.dp)
                     )
                 },
@@ -181,17 +179,16 @@ private fun TemplateCard(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shape = RoundedCornerShape(12.dp),
-        shadowElevation = 2.dp
+        shadowElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                // Icon
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -210,7 +207,7 @@ private fun TemplateCard(
                 ) {
                     Icon(
                         getCategoryIcon(template.category),
-                        contentDescription = null,
+                        null,
                         tint = when (template.category) {
                             TemplateCategory.CLIENT_ONBOARDING -> ProfessionalSuccess
                             TemplateCategory.EMPLOYEE_ONBOARDING -> Color(0xFF3B82F6)
@@ -227,7 +224,7 @@ private fun TemplateCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        template.name,
+                        template.name.uppercase(),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -246,40 +243,28 @@ private fun TemplateCard(
                         color = ProfessionalSuccess.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Row(
+                        Text(
+                            "PRIORITY_UNIT",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = ProfessionalSuccess,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "Popular",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = ProfessionalSuccess
-                            )
-                        }
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = ProfessionalSuccess
+                        )
                     }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Stats
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 StatItem(
                     icon = Icons.AutoMirrored.Filled.Assignment,
-                    label = "${template.tasks.size} tasks"
+                    label = "${template.tasks.size} assignments"
                 )
                 StatItem(
                     icon = Icons.Default.Schedule,
@@ -300,7 +285,7 @@ private fun StatItem(
     ) {
         Icon(
             icon,
-            contentDescription = null,
+            null,
             tint = StoneGray,
             modifier = Modifier.size(16.dp)
         )
@@ -316,7 +301,7 @@ private fun StatItem(
 private fun getCategoryIcon(category: TemplateCategory): ImageVector {
     return when (category) {
         TemplateCategory.CLIENT_ONBOARDING -> Icons.Default.Business
-        TemplateCategory.EMPLOYEE_ONBOARDING -> Icons.Default.People
+        TemplateCategory.EMPLOYEE_ONBOARDING -> Icons.Default.Groups
         TemplateCategory.BUG_FIX_WORKFLOW -> Icons.Default.BugReport
         TemplateCategory.SPRINT_PLANNING -> Icons.Default.CalendarMonth
         TemplateCategory.MARKETING_CAMPAIGN -> Icons.Default.Campaign
@@ -326,4 +311,3 @@ private fun getCategoryIcon(category: TemplateCategory): ImageVector {
         TemplateCategory.CUSTOM -> Icons.Default.Apps
     }
 }
-

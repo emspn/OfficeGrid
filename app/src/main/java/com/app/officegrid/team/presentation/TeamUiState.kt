@@ -8,5 +8,6 @@ data class TeamUiState(
     val pendingRequests: List<Employee> = emptyList(),
     val approvedMembers: List<Employee> = emptyList(),
     val error: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val currentUserId: String? = null
 )

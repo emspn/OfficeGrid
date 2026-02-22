@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface EmployeeRepository {
     fun getEmployees(companyId: String): Flow<List<Employee>>
     fun getEmployeesByUserId(userId: String): Flow<List<Employee>>
+    fun getPendingRequestsCount(companyId: String): Flow<Int>
     suspend fun syncEmployees(companyId: String): Result<Unit>
     suspend fun syncEmployeesByUserId(userId: String): Result<Unit>
     suspend fun updateEmployeeStatus(employeeId: String, status: EmployeeStatus): Result<Unit>
@@ -14,6 +15,7 @@ interface EmployeeRepository {
     suspend fun leaveWorkspace(userId: String, companyId: String): Result<Unit>
     suspend fun updateEmployeeRole(employeeId: String, newRole: String): Result<Unit>
     suspend fun joinWorkspace(userId: String, userName: String, userEmail: String, companyId: String): Result<Unit>
-    suspend fun validateWorkspaceCode(code: String): Boolean
+    suspend fun validateWorkspaceCode(code: String): Result<Boolean>
     suspend fun getOrganizationName(companyId: String): String?
+    suspend fun getWorkspaceAdminId(companyId: String): String?
 }

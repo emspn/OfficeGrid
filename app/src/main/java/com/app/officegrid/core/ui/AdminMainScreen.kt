@@ -29,7 +29,9 @@ fun AdminMainScreen(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    
     val unreadNotifications by notificationViewModel.unreadCount.collectAsState()
+    val pendingTeamRequests by notificationViewModel.pendingTeamRequests.collectAsState()
 
     val items = listOf(
         NavigationItem("DASHBOARD", Screen.AdminDashboard.route, Icons.Default.GridView),
@@ -40,14 +42,15 @@ fun AdminMainScreen(
     )
 
     val currentRoute = currentDestination?.route
-    val isDetailScreen = currentRoute in listOf(
-        Screen.AdminCreateTask.route,
-        Screen.AdminEditTask.route,
-        Screen.TaskDetail.route,
-        Screen.Notifications.route,
-        Screen.AdminSettings.route,
-        Screen.OrganizationSettings.route
-    )
+    val isDetailScreen = currentRoute?.let { route ->
+        route.startsWith("admin_create_task") ||
+        route.startsWith("admin_edit_task") ||
+        route.startsWith("task_detail") ||
+        route.startsWith("notifications") ||
+        route.startsWith("admin_settings") ||
+        route.startsWith("organization_settings") ||
+        route.startsWith("admin_task_success") // ✅ FIXED: Mission Success Screen hides all bars
+    } ?: false
 
     Scaffold(
         containerColor = WarmBackground,
@@ -93,7 +96,6 @@ fun AdminMainScreen(
         },
         bottomBar = {
             if (!isDetailScreen) {
-                // ✅ HERO FIX: Apply navigationBarsPadding here to let white background bleed through
                 Surface(
                     color = Color.White,
                     tonalElevation = 0.dp,
@@ -103,19 +105,35 @@ fun AdminMainScreen(
                     NavigationBar(
                         containerColor = Color.White,
                         tonalElevation = 0.dp,
-                        windowInsets = WindowInsets(0, 0, 0, 0), // Already handled by Surface padding
-                        modifier = Modifier.height(64.dp) // Professional tight height
+                        windowInsets = WindowInsets(0, 0, 0, 0),
+                        modifier = Modifier.height(64.dp)
                     ) {
                         items.forEach { item ->
                             val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                            val isTeamItem = item.title == "TEAM"
+
                             NavigationBarItem(
                                 icon = { 
-                                    Icon(
-                                        item.icon, 
-                                        null, 
-                                        modifier = Modifier.size(22.dp),
-                                        tint = if (selected) DeepCharcoal else StoneGray.copy(alpha = 0.6f)
-                                    ) 
+                                    BadgedBox(
+                                        badge = {
+                                            if (isTeamItem && pendingTeamRequests > 0) {
+                                                Badge(
+                                                    containerColor = ProfessionalError, 
+                                                    contentColor = Color.White,
+                                                    modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
+                                                ) {
+                                                    Text(pendingTeamRequests.toString())
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            item.icon, 
+                                            null, 
+                                            modifier = Modifier.size(22.dp),
+                                            tint = if (selected) DeepCharcoal else StoneGray.copy(alpha = 0.6f)
+                                        )
+                                    }
                                 },
                                 label = { 
                                     Text(

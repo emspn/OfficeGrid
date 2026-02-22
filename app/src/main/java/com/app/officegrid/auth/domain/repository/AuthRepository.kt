@@ -19,4 +19,9 @@ interface AuthRepository {
     suspend fun logout(): Result<Unit>
     fun getCurrentUser(): Flow<User?>
     suspend fun getSession(): UserSession?
+    
+    /**
+     * Updates the user's active company ID in the database for RLS filtering
+     */
+    suspend fun updateActiveCompany(companyId: String): Result<Unit>
 }

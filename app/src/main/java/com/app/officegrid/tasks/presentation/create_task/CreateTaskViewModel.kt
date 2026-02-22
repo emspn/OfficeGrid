@@ -83,11 +83,6 @@ class CreateTaskViewModel @Inject constructor(
                         it.status == EmployeeStatus.APPROVED && it.id != user.id
                     }
 
-                    android.util.Log.d("CreateTaskVM", "✅ Approved employees (excluding admin): ${approvedEmployees.size}")
-                    approvedEmployees.forEach { emp ->
-                        android.util.Log.d("CreateTaskVM", "   → ${emp.name} (${emp.id})")
-                    }
-
                     _employees.value = approvedEmployees
                 }
             } catch (e: Exception) {
@@ -134,8 +129,16 @@ class CreateTaskViewModel @Inject constructor(
             repository.createTask(newTask)
                 .onSuccess {
                     _state.update { it.copy(isLoading = false, isSuccess = true) }
-                    _events.send(UiEvent.ShowMessage("✅ Task created and assigned successfully!"))
-                    _events.send(UiEvent.Navigate(Screen.AdminTasks.route))
+                    
+                    // 🚀 NAVIGATION CHANGE: Navigate to Success screen instead of task list
+                    val employeeName = _employees.value.find { it.id == _assignedTo.value }?.name ?: "Team Member"
+                    val successRoute = Screen.AdminTaskSuccess.createRoute(
+                        title = newTask.title,
+                        employee = employeeName,
+                        date = newTask.dueDate
+                    )
+                    
+                    _events.send(UiEvent.Navigate(successRoute))
                 }
                 .onFailure { error ->
                     _state.update { it.copy(isLoading = false, error = error.message) }
@@ -181,7 +184,7 @@ class CreateTaskViewModel @Inject constructor(
             _state.update { it.copy(isLoading = false, isSuccess = successCount > 0) }
 
             if (successCount > 0) {
-                _events.send(UiEvent.ShowMessage("✅ Successfully created $successCount tasks from ${template.name} template!"))
+                // For simplicity, template creation just goes back to task list
                 _events.send(UiEvent.Navigate(Screen.AdminTasks.route))
             }
         }

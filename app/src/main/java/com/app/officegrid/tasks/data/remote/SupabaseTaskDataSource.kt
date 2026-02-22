@@ -1,5 +1,6 @@
 package com.app.officegrid.tasks.data.remote
 
+import com.app.officegrid.tasks.data.remote.dto.TaskDto
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
@@ -8,26 +9,10 @@ import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import javax.inject.Inject
 import javax.inject.Singleton
-
-@Serializable
-data class TaskDto(
-    val id: String? = null,
-    val title: String,
-    val description: String = "",
-    val status: String = "TODO",
-    val priority: String = "MEDIUM",
-    val assigned_to: String,
-    val created_by: String,
-    val company_id: String,
-    val due_date: String,
-    val created_at: String? = null,
-    val updated_at: String? = null
-)
 
 sealed class TaskRealtimeEvent {
     data class Inserted(val task: TaskDto) : TaskRealtimeEvent()
@@ -92,10 +77,13 @@ class SupabaseTaskDataSource @Inject constructor(
     fun observeTasks(companyId: String): Flow<TaskRealtimeEvent> {
         val channel = realtime.channel("tasks_$companyId")
         
-        return channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+        // Define flow BEFORE subscription to avoid IllegalStateException
+        val changeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "tasks"
-        }.onStart {
-            channel.subscribe() // 🚀 CRITICAL: Must subscribe to start receiving data
+        }
+
+        return changeFlow.onStart {
+            channel.subscribe()
         }.map { action ->
             when (action) {
                 is PostgresAction.Insert -> {

@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.ui.AdminSectionHeader
 import com.app.officegrid.team.domain.model.Employee
 import com.app.officegrid.ui.theme.*
@@ -28,16 +29,17 @@ import com.app.officegrid.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamScreen(
-    viewModel: TeamViewModel = hiltViewModel()
+    viewModel: TeamViewModel = hiltViewModel(),
+    sessionManager: SessionManager = hiltViewModel() // Used to identify current user
 ) {
     val state by viewModel.state.collectAsState()
+    val sessionState by sessionManager.sessionState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var selectedEmployeeForOptions by remember { mutableStateOf<Employee?>(null) }
     var showRemoveDialog by remember { mutableStateOf(false) }
     var showRoleDialog by remember { mutableStateOf(false) }
 
-    // Show success/error messages
     LaunchedEffect(state.successMessage, state.error) {
         state.successMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -60,7 +62,7 @@ fun TeamScreen(
                 .background(WarmBackground)
         ) {
             PullToRefreshBox(
-                isRefreshing = false, // Manual refresh only to avoid constant arrow
+                isRefreshing = false,
                 onRefresh = viewModel::syncTeam,
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -74,7 +76,7 @@ fun TeamScreen(
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                 AdminSectionHeader(
                                     title = "Team Management",
-                                    subtitle = "Manage your team members"
+                                    subtitle = "Manage active workspace operatives"
                                 )
                                 IconButton(onClick = viewModel::syncTeam) {
                                     Icon(Icons.Default.Refresh, null, tint = DeepCharcoal)
@@ -83,10 +85,9 @@ fun TeamScreen(
                         }
                     }
 
-                    // 1. Pending Requests Section
                     if (state.pendingRequests.isNotEmpty()) {
                         item {
-                            EliteTeamSectionHeader(title = "Pending Requests", count = state.pendingRequests.size, color = ProfessionalWarning)
+                            EliteTeamSectionHeader(title = "Pending Authorization", count = state.pendingRequests.size, color = ProfessionalWarning)
                         }
                         items(state.pendingRequests) { employee ->
                             ElitePendingOperativeRow(
@@ -98,9 +99,8 @@ fun TeamScreen(
                         item { Spacer(modifier = Modifier.height(32.dp)) }
                     }
 
-                    // 2. Team Members Section
                     item {
-                        EliteTeamSectionHeader(title = "Team Members", count = state.approvedMembers.size, color = DeepCharcoal)
+                        EliteTeamSectionHeader(title = "Active Operatives", count = state.approvedMembers.size, color = DeepCharcoal)
                     }
 
                     if (state.approvedMembers.isEmpty() && state.pendingRequests.isEmpty()) {
@@ -111,10 +111,14 @@ fun TeamScreen(
                         }
                     } else {
                         items(state.approvedMembers) { employee ->
+                            val isSelf = employee.id == sessionState.userId
                             EliteOperativeRow(
                                 employee = employee,
+                                isSelf = isSelf,
                                 onLongClick = {
-                                    selectedEmployeeForOptions = employee
+                                    if (!isSelf) {
+                                        selectedEmployeeForOptions = employee
+                                    }
                                 }
                             )
                         }
@@ -124,7 +128,6 @@ fun TeamScreen(
                 }
             }
 
-            // Employee Options Sheet
             if (selectedEmployeeForOptions != null) {
                 ModalBottomSheet(
                     onDismissRequest = { selectedEmployeeForOptions = null },
@@ -132,15 +135,15 @@ fun TeamScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                         Text(
-                            text = "Options for ${selectedEmployeeForOptions?.name}",
+                            text = "OPERATIVE_SPECIFICATIONS: ${selectedEmployeeForOptions?.name}",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
                         
                         ListItem(
-                            headlineContent = { Text("Edit Role", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Current: ${selectedEmployeeForOptions?.role}") },
-                            leadingContent = { Icon(Icons.Default.Edit, null) },
+                            headlineContent = { Text("Update Authorization Level", style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text("Current Role: ${selectedEmployeeForOptions?.role}") },
+                            leadingContent = { Icon(Icons.Default.Security, null) },
                             modifier = Modifier.pointerInput(Unit) {
                                 detectTapGestures(onTap = {
                                     showRoleDialog = true
@@ -149,9 +152,9 @@ fun TeamScreen(
                         )
                         
                         ListItem(
-                            headlineContent = { Text("Remove from Team", color = ProfessionalError, style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Revoke workspace access") },
-                            leadingContent = { Icon(Icons.Default.Delete, null, tint = ProfessionalError) },
+                            headlineContent = { Text("Terminate Connection", color = ProfessionalError, style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text("Revoke node access immediately") },
+                            leadingContent = { Icon(Icons.Default.PowerSettingsNew, null, tint = ProfessionalError) },
                             modifier = Modifier.pointerInput(Unit) {
                                 detectTapGestures(onTap = {
                                     showRemoveDialog = true
@@ -163,13 +166,12 @@ fun TeamScreen(
                 }
             }
 
-            // Warning Removal Dialog
             if (showRemoveDialog) {
                 AlertDialog(
                     onDismissRequest = { showRemoveDialog = false },
                     icon = { Icon(Icons.Default.Warning, null, tint = ProfessionalError, modifier = Modifier.size(48.dp)) },
-                    title = { Text("Remove Team Member") },
-                    text = { Text("Are you sure you want to remove '${selectedEmployeeForOptions?.name}' from your workspace? They will lose access immediately.") },
+                    title = { Text("CONFIRM TERMINATION") },
+                    text = { Text("Are you sure you want to disconnect operative '${selectedEmployeeForOptions?.name}'? All active mission access will be revoked.") },
                     confirmButton = {
                         Button(
                             onClick = {
@@ -178,25 +180,24 @@ fun TeamScreen(
                                 selectedEmployeeForOptions = null
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = ProfessionalError)
-                        ) { Text("Remove") }
+                        ) { Text("TERMINATE") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showRemoveDialog = false }) { Text("Cancel") }
+                        TextButton(onClick = { showRemoveDialog = false }) { Text("CANCEL") }
                     }
                 )
             }
 
-            // Role Edit Dialog
             if (showRoleDialog) {
-                var roleText by remember { mutableStateOf(selectedEmployeeForOptions?.role ?: "EMPLOYEE") }
+                var roleText by remember { mutableStateOf(selectedEmployeeForOptions?.role ?: "OPERATIVE") }
                 AlertDialog(
                     onDismissRequest = { showRoleDialog = false },
-                    title = { Text("Change Role") },
+                    title = { Text("UPDATE ROLE") },
                     text = {
                         OutlinedTextField(
                             value = roleText,
                             onValueChange = { roleText = it },
-                            label = { Text("Role / Designation") },
+                            label = { Text("Authorization Level") },
                             modifier = Modifier.fillMaxWidth()
                         )
                     },
@@ -205,7 +206,7 @@ fun TeamScreen(
                             selectedEmployeeForOptions?.let { viewModel.updateRole(it.id, roleText) }
                             showRoleDialog = false
                             selectedEmployeeForOptions = null
-                        }) { Text("Update") }
+                        }) { Text("UPDATE") }
                     }
                 )
             }
@@ -219,7 +220,7 @@ fun EliteTeamSectionHeader(title: String, count: Int, color: Color) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = color))
+        Text(title.uppercase(), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = color))
         Spacer(Modifier.width(12.dp))
         Text("[ ${count.toString().padStart(2, '0')} ]", style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace), color = StoneGray)
     }
@@ -249,24 +250,32 @@ fun ElitePendingOperativeRow(employee: Employee, onApprove: () -> Unit, onReject
 }
 
 @Composable
-fun EliteOperativeRow(employee: Employee, onLongClick: () -> Unit) {
+fun EliteOperativeRow(employee: Employee, isSelf: Boolean, onLongClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .pointerInput(Unit) {
-                detectTapGestures(onLongPress = { onLongClick() })
+                detectTapGestures(onLongPress = { if (!isSelf) onLongClick() })
             },
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(0.5.dp, WarmBorder)
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(6.dp).background(ProfessionalSuccess, CircleShape))
+            Box(Modifier.size(6.dp).background(if (isSelf) DeepCharcoal else ProfessionalSuccess, CircleShape))
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(employee.name.uppercase(), style = MaterialTheme.typography.labelMedium, color = DeepCharcoal)
-                Text("ROLE: ${employee.role.uppercase()}", style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp), color = StoneGray)
+                Text(
+                    text = if (isSelf) "${employee.name.uppercase()} (YOU)" else employee.name.uppercase(), 
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (isSelf) FontWeight.ExtraBold else FontWeight.Medium), 
+                    color = DeepCharcoal
+                )
+                Text("LEVEL: ${employee.role.uppercase()}", style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 9.sp), color = StoneGray)
             }
-            Text("ACTIVE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp), color = ProfessionalSuccess)
+            if (isSelf) {
+                Text("CORE_ADMIN", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp), color = DeepCharcoal)
+            } else {
+                Text("AUTHORIZED", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp), color = ProfessionalSuccess)
+            }
         }
     }
 }
@@ -276,6 +285,6 @@ fun EliteEmptyTeamState() {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(Icons.Default.Groups, null, modifier = Modifier.size(48.dp), tint = WarmBorder)
         Spacer(Modifier.height(16.dp))
-        Text("No team members yet", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+        Text("No operatives in node", style = MaterialTheme.typography.labelSmall, color = StoneGray)
     }
 }

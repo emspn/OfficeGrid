@@ -1,5 +1,6 @@
 package com.app.officegrid.tasks.data.remote
 
+import com.app.officegrid.tasks.data.remote.dto.TaskRemarkDto
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
@@ -8,21 +9,10 @@ import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import javax.inject.Inject
 import javax.inject.Singleton
-
-@Serializable
-data class TaskRemarkDto(
-    val id: String? = null,
-    val task_id: String,
-    val user_id: String,
-    val user_name: String,
-    val content: String,
-    val created_at: String? = null
-)
 
 sealed class RemarkRealtimeEvent {
     data class Inserted(val remark: TaskRemarkDto) : RemarkRealtimeEvent()
@@ -57,7 +47,6 @@ class SupabaseRemarkDataSource @Inject constructor(
         val channel = realtime.channel("remarks_$taskId")
         return channel.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "task_remarks"
-            // Note: Filter on taskId if possible in SDK, otherwise filter in map
         }.onStart {
             channel.subscribe()
         }.map { action ->

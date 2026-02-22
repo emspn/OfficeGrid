@@ -124,7 +124,7 @@ private fun AdminDashboardContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("WORKSPACE_JOIN_CODE", style = MaterialTheme.typography.labelSmall, color = ProfessionalSuccess)
+                        Text("HUB_ID", style = MaterialTheme.typography.labelSmall, color = ProfessionalSuccess)
                         Text(
                             text = companyId,
                             style = MaterialTheme.typography.headlineSmall.copy(
@@ -155,12 +155,12 @@ private fun AdminDashboardContent(
                 Text("GLOBAL_METRICS", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AdminStatCard(
-                        label = "TOTAL_TASKS",
+                        label = "TOTAL_MISSIONS",
                         value = dashboardData.analytics.totalTasks.toString(),
                         modifier = Modifier.weight(1f)
                     )
                     AdminStatCard(
-                        label = "COMPLETED",
+                        label = "AUTHORIZED_FINALIZE",
                         value = dashboardData.analytics.completedTasks.toString(),
                         indicatorColor = ProfessionalSuccess,
                         modifier = Modifier.weight(1f)
@@ -168,7 +168,7 @@ private fun AdminDashboardContent(
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AdminStatCard(
-                        label = "IN_PROGRESS",
+                        label = "IN_DEPLOYMENT",
                         value = dashboardData.analytics.inProgressTasks.toString(),
                         indicatorColor = ProfessionalWarning,
                         modifier = Modifier.weight(1f)
@@ -184,7 +184,7 @@ private fun AdminDashboardContent(
 
             // Task Distribution Progress
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("WORKFLOW_DISTRIBUTION", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
+                Text("REGISTRY_DISTRIBUTION", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = Color.White,
@@ -193,16 +193,16 @@ private fun AdminDashboardContent(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         val total = dashboardData.analytics.totalTasks
-                        AdminProgressBar("PENDING", dashboardData.analytics.pendingTasks, total, StoneGray)
-                        AdminProgressBar("IN_PROGRESS", dashboardData.analytics.inProgressTasks, total, ProfessionalWarning)
-                        AdminProgressBar("COMPLETED", dashboardData.analytics.completedTasks, total, ProfessionalSuccess)
+                        AdminProgressBar("PENDING_OPS", dashboardData.analytics.pendingTasks, total, StoneGray)
+                        AdminProgressBar("IN_DEPLOYMENT", dashboardData.analytics.inProgressTasks, total, ProfessionalWarning)
+                        AdminProgressBar("AUTHORIZED_FINALIZE", dashboardData.analytics.completedTasks, total, ProfessionalSuccess)
                     }
                 }
             }
 
             // Team Efficiency List
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("TEAM_EFFICIENCY", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
+                Text("OPERATIVE_EFFICIENCY", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = StoneGray)
                 if (dashboardData.teamPerformance.isEmpty()) {
                     Text("No active operatives found.", style = MaterialTheme.typography.bodySmall, color = StoneGray, modifier = Modifier.padding(start = 4.dp))
                 } else {
@@ -222,7 +222,7 @@ private fun AdminProgressBar(label: String, count: Int, total: Int, color: Color
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
-            Text("$count tasks", style = MaterialTheme.typography.labelSmall, color = StoneGray)
+            Text("$count units", style = MaterialTheme.typography.labelSmall, color = StoneGray)
         }
         LinearProgressIndicator(
             progress = { if (total > 0) count.toFloat() / total.toFloat() else 0f },

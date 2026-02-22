@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services) // ✅ Added Firebase Plugin
 }
 
 // Modern property loading using the layout API
@@ -38,7 +39,8 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            // ✅ Removed applicationIdSuffix = ".debug" because google-services.json 
+            // only contains the 'com.app.officegrid' package name.
             isDebuggable = true
         }
         release {
@@ -62,7 +64,7 @@ android {
     // Modern Kotlin configuration inside the Android block (AGP 8.x best practice)
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
+            jvmTarget = JvmTarget.JVM_17
             freeCompilerArgs.add("-Xopt-in=kotlin.RequiresOptIn")
         }
     }
@@ -99,6 +101,20 @@ dependencies {
     implementation(libs.androidx.ui)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    
+    // Hilt Worker
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
+    // Logging
+    implementation(libs.timber)
 
     // Network
     implementation(libs.retrofit)

@@ -31,4 +31,6 @@ interface NotificationRepository {
     suspend fun clearAllNotifications(): Result<Unit>
 
     fun getNotificationsByType(type: NotificationType): Flow<List<AppNotification>>
+    
+    suspend fun registerFCMToken(token: String): Result<Unit>
 }

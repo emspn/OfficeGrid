@@ -5,50 +5,57 @@ import androidx.lifecycle.viewModelScope
 import com.app.officegrid.auth.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
-    private val _state = MutableStateFlow(LoginUiState())
-    val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
-    private val _email = MutableStateFlow("")
-    val email: StateFlow<String> = _email.asStateFlow()
-
-    private val _password = MutableStateFlow("")
-    val password: StateFlow<String> = _password.asStateFlow()
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState = _uiState.asStateFlow()
 
     fun onEmailChange(email: String) {
-        _email.value = email
+        _uiState.update { it.copy(email = email) }
     }
 
     fun onPasswordChange(password: String) {
-        _password.value = password
+        _uiState.update { it.copy(password = password) }
     }
 
     fun login() {
+        val email = _uiState.value.email.trim()
+        val password = _uiState.value.password
+
+        if (email.isBlank() || password.isBlank()) {
+            _uiState.update { it.copy(authResult = AuthResult.Error("Please enter both email and password.")) }
+            return
+        }
+
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            authRepository.login(_email.value, _password.value)
-                .onSuccess {
-                    _state.update { it.copy(isLoading = false, isSuccess = true) }
+            try {
+                _uiState.update { it.copy(authResult = AuthResult.Loading) }
+                
+                val result = authRepository.login(
+                    email = email,
+                    password = password
+                )
+
+                result.onSuccess { session ->
+                    // We trust the SessionManager and MainActivity to handle routing
+                    _uiState.update { it.copy(authResult = AuthResult.Success) }
+                }.onFailure { error ->
+                    Timber.e(error, "Login failed")
+                    _uiState.update { it.copy(authResult = AuthResult.Error(error.message ?: "Login failed. Please try again.")) }
                 }
-                .onFailure { error ->
-                    val rawMessage = error.message ?: ""
-                    val eliteMessage = when {
-                        rawMessage.contains("Invalid login credentials", ignoreCase = true) -> "AUTH_REJECTED: Invalid credentials."
-                        rawMessage.contains("network", ignoreCase = true) -> "Network error. Please check your connection."
-                        rawMessage.contains("Email not confirmed", ignoreCase = true) -> "AUTH_PENDING: Email verification required."
-                        else -> "SYSTEM_ERROR: Authentication failed."
-                    }
-                    _state.update { it.copy(isLoading = false, error = eliteMessage) }
-                }
+            } catch (e: Exception) {
+                Timber.e(e, "Unexpected error during login")
+                _uiState.update { it.copy(authResult = AuthResult.Error("An unexpected error occurred.")) }
+            }
         }
     }
 }

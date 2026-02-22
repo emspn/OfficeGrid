@@ -5,6 +5,7 @@ import com.app.officegrid.core.common.NotificationType
 import com.app.officegrid.core.common.domain.model.AuditEventType
 import com.app.officegrid.tasks.domain.model.TaskPriority
 import com.app.officegrid.tasks.domain.model.TaskStatus
+import com.app.officegrid.team.domain.model.EmployeeStatus
 
 class Converters {
     @TypeConverter
@@ -30,4 +31,10 @@ class Converters {
 
     @TypeConverter
     fun toAuditEventType(value: String): AuditEventType = AuditEventType.valueOf(value)
+
+    @TypeConverter
+    fun fromEmployeeStatus(status: EmployeeStatus): String = status.name
+
+    @TypeConverter
+    fun toEmployeeStatus(value: String): EmployeeStatus = EmployeeStatus.valueOf(value)
 }

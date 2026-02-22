@@ -17,5 +17,6 @@ data class EmployeeEntity(
     val email: String,
     val role: String,
     val companyId: String,    // Workspace/Organization ID
-    val status: EmployeeStatus
+    val status: EmployeeStatus,
+    val companyName: String? = null // Cached organization name
 )

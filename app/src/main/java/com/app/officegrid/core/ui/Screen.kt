@@ -14,6 +14,12 @@ sealed class Screen(val route: String) {
     object AdminEditTask : Screen("admin_edit_task/{taskId}") {
         fun createRoute(taskId: String) = "admin_edit_task/$taskId"
     }
+    // 🚀 NEW: Task Creation Success Screen
+    object AdminTaskSuccess : Screen("admin_task_success/{title}/{employee}/{date}") {
+        fun createRoute(title: String, employee: String, date: Long) = 
+            "admin_task_success/$title/$employee/$date"
+    }
+
     object AdminTeam : Screen("admin_team")
     object AdminProfile : Screen("admin_profile")
     object AdminAuditLogs : Screen("admin_audit_logs")

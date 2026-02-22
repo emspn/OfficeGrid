@@ -33,7 +33,7 @@ class NotificationRemoteDataSourceRealtime @Inject constructor(
 
         val notificationChannel = channel!!
 
-        // Subscribe to INSERT events on notifications table
+        // ✅ CRITICAL FIX: postgresChangeFlow MUST be called BEFORE subscribe()
         val changeFlow = notificationChannel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "notifications"
         }
@@ -43,7 +43,7 @@ class NotificationRemoteDataSourceRealtime @Inject constructor(
         notificationChannel.subscribe()
         android.util.Log.d("NotificationRealtime", "✅ Channel subscribed successfully!")
 
-        // Collect and emit notifications
+        // Collect and emit notifications from the flow defined BEFORE subscription
         changeFlow.collect { action ->
             try {
                 android.util.Log.d("NotificationRealtime", "📬 Received INSERT event: ${action.record}")
@@ -61,7 +61,6 @@ class NotificationRemoteDataSourceRealtime @Inject constructor(
     fun unsubscribe() {
         channel?.let {
             android.util.Log.d("NotificationRealtime", "🔌 Unsubscribing from notification channel...")
-            // Channel will be cleaned up by GC
             channel = null
         }
     }

@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -26,11 +25,16 @@ fun LoginScreen(
     onNavigateToSignup: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
-    val email by viewModel.email.collectAsState()
-    val password by viewModel.password.collectAsState()
+    val state by viewModel.uiState.collectAsState()
     
     var passwordVisible by remember { mutableStateOf(false) }
+
+    val isLoading = state.authResult is AuthResult.Loading
+    val error = (state.authResult as? AuthResult.Error)?.message 
+        ?: if (state.authResult is AuthResult.InvalidCredentials) "Invalid login credentials."
+        else if (state.authResult is AuthResult.EmailNotVerified) "Email verification required."
+        else if (state.authResult is AuthResult.NotApproved) "Your account is pending approval."
+        else null
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -81,12 +85,12 @@ fun LoginScreen(
                 Text("Email Address", style = MaterialTheme.typography.labelSmall, color = MutedSlate)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = email,
+                    value = state.email,
                     onValueChange = viewModel::onEmailChange,
                     placeholder = { Text("you@company.com", style = MaterialTheme.typography.bodyMedium.copy(color = StoneGray)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    enabled = !state.isLoading,
+                    enabled = !isLoading,
                     singleLine = true,
                     shape = RoundedCornerShape(2.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -103,12 +107,12 @@ fun LoginScreen(
                 Text("Password", style = MaterialTheme.typography.labelSmall, color = MutedSlate)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = password,
+                    value = state.password,
                     onValueChange = viewModel::onPasswordChange,
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    enabled = !state.isLoading,
+                    enabled = !isLoading,
                     singleLine = true,
                     shape = RoundedCornerShape(2.dp),
                     trailingIcon = {
@@ -128,7 +132,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            if (state.isLoading) {
+            if (isLoading) {
                 CircularProgressIndicator(color = DeepCharcoal, strokeWidth = 1.dp, modifier = Modifier.size(24.dp))
             } else {
                 Button(
@@ -155,7 +159,7 @@ fun LoginScreen(
                 }
             }
 
-            state.error?.let {
+            error?.let {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = it,
@@ -175,4 +179,3 @@ fun LoginScreen(
         }
     }
 }
-

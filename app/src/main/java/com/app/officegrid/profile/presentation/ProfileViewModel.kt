@@ -2,18 +2,15 @@ package com.app.officegrid.profile.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
 import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.ui.UiState
 import com.app.officegrid.core.ui.asUiState
-import com.app.officegrid.tasks.domain.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ProfileData(
@@ -26,10 +23,8 @@ data class ProfileData(
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
     private val sessionManager: SessionManager,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val taskRepository: TaskRepository
+    private val getCurrentUserUseCase: GetCurrentUserUseCase
 ) : ViewModel() {
 
     val state: StateFlow<UiState<ProfileData?>> = getCurrentUserUseCase()
@@ -51,11 +46,11 @@ class ProfileViewModel @Inject constructor(
             initialValue = UiState.Loading
         )
 
+    /**
+     * ✅ DELEGATED LOGOUT
+     * Uses SessionManager for a unified, secure app teardown
+     */
     fun logout() {
-        viewModelScope.launch {
-            // Clear local task data before logging out
-            taskRepository.clearLocalData()
-            authRepository.logout()
-        }
+        sessionManager.logout()
     }
 }

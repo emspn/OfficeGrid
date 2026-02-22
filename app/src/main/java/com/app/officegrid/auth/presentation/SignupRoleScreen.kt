@@ -58,7 +58,7 @@ fun SignupRoleScreen(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Create Account",
+                    text = "Registry Initialization",
                     style = MaterialTheme.typography.labelSmall.copy(
                         letterSpacing = 1.sp
                     ),
@@ -73,12 +73,12 @@ fun SignupRoleScreen(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "Choose Your Role",
-                    style = MaterialTheme.typography.headlineMedium,
+                    text = "Select Authorization Role",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
                     color = DeepCharcoal
                 )
                 Text(
-                    text = "Select how you'll be using OfficeGrid",
+                    text = "Select how you'll be interacting with the OfficeGrid network",
                     style = MaterialTheme.typography.bodyLarge,
                     color = StoneGray,
                     modifier = Modifier.padding(top = 8.dp)
@@ -88,8 +88,8 @@ fun SignupRoleScreen(
 
                 // Organisation Role
                 EliteRoleCard(
-                    title = "Admin / Organization",
-                    description = "Create a new workspace and manage your team",
+                    title = "Admin / Hub",
+                    description = "Create a new organization node and manage your operative network",
                     icon = Icons.Default.AddBusiness,
                     accentColor = DeepCharcoal,
                     onClick = onNavigateToCompanySignup
@@ -97,10 +97,10 @@ fun SignupRoleScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Employee Role
+                // Operative Role
                 EliteRoleCard(
-                    title = "Employee",
-                    description = "Join an existing workspace using your team's workspace ID",
+                    title = "Operative",
+                    description = "Join an existing node using a provided workspace security key",
                     icon = Icons.Default.PersonAdd,
                     accentColor = ProfessionalSuccess,
                     onClick = onNavigateToEmployeeSignup
@@ -109,8 +109,8 @@ fun SignupRoleScreen(
                 Spacer(modifier = Modifier.height(60.dp))
                 
                 Text(
-                    "OfficeGrid v1.0.0",
-                    style = MaterialTheme.typography.labelSmall,
+                    "OfficeGrid_v1.0.0_PRODUCTION",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                     color = WarmBorder
                 )
                 
@@ -157,7 +157,7 @@ fun EliteRoleCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = title,
+                    text = title.uppercase(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         letterSpacing = 1.sp
@@ -183,4 +183,3 @@ fun EliteRoleCard(
         }
     }
 }
-

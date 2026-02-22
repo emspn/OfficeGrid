@@ -34,12 +34,32 @@
             </intent-filter>
         </activity>
 
+        <!-- ✅ FCM Messaging Service -->
+        <service
+            android:name=".core.notification.OfficeGridMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- ✅ Notification Background Sentinel Service -->
         <service
             android:name=".core.notification.OfficeGridNotificationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- ✅ Boot Receiver to restart services -->
+        <receiver
+            android:name=".core.notification.BootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- File Provider for PDF Sharing -->
         <provider

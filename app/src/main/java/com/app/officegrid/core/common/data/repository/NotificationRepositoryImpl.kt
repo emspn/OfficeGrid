@@ -14,6 +14,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,6 +48,9 @@ class NotificationRepositoryImpl @Inject constructor(
                 .distinctUntilChanged()
                 .collectLatest { userId ->
                     if (userId != null) {
+                        // Small delay to allow Auth headers to propagate
+                        delay(1000)
+                        syncNotifications() // ✅ Fetch missed notifications on startup/reconnect
                         startRealtimeSync()
                     } else {
                         stopRealtimeSync()
@@ -61,31 +65,11 @@ class NotificationRepositoryImpl @Inject constructor(
             try {
                 android.util.Log.d("NotificationRepo", "🔄 Starting Realtime notification sync...")
 
-                // Get current user ID to filter notifications
                 val currentUserId = getCurrentUserUseCase().first()?.id
-                android.util.Log.d("NotificationRepo", "👤 Current user ID: $currentUserId")
-
-                if (currentUserId == null) {
-                    android.util.Log.e("NotificationRepo", "❌ Cannot start realtime sync - no user ID")
-                    return@launch
-                }
-
-                android.util.Log.d("NotificationRepo", "✅ Subscribing to notification changes...")
+                if (currentUserId == null) return@launch
 
                 realtimeDataSource.subscribeToNotifications().collect { dto ->
-                    android.util.Log.d("NotificationRepo", "📬 Received notification from Realtime:")
-                    android.util.Log.d("NotificationRepo", "   → ID: ${dto.id}")
-                    android.util.Log.d("NotificationRepo", "   → For User: ${dto.user_id}")
-                    android.util.Log.d("NotificationRepo", "   → Title: ${dto.title}")
-                    android.util.Log.d("NotificationRepo", "   → Current User: $currentUserId")
-
-                    // ✅ CRITICAL FIX: Only process notifications meant for THIS user
-                    if (dto.user_id != currentUserId) {
-                        android.util.Log.d("NotificationRepo", "⏭️ Skipping - notification for different user")
-                        return@collect // Skip this notification
-                    }
-
-                    android.util.Log.d("NotificationRepo", "✅ Notification is for THIS user - processing...")
+                    if (dto.user_id != currentUserId) return@collect
 
                     val entity = dto.toEntity()
                     val settings = settingsRepository.getSettings().first()
@@ -100,26 +84,21 @@ class NotificationRepositoryImpl @Inject constructor(
                     }
 
                     if (shouldSave) {
-                        // Save to database
-                        notificationDao.insertNotifications(listOf(entity))
-                        android.util.Log.d("NotificationRepo", "💾 Saved notification to local database")
-
-                        // Show push notification
-                        pushNotificationManager.showNotification(
-                            id = entity.id,
-                            title = entity.title,
-                            message = entity.message,
-                            type = entity.type
-                        )
-                        android.util.Log.d("NotificationRepo", "📱 Displayed OS notification")
-                        android.util.Log.d("NotificationRepo", "✅✅✅ Notification fully processed!")
-                    } else {
-                        android.util.Log.d("NotificationRepo", "⏭️ Skipping - notification type disabled in settings")
+                        // Check if already exists to avoid duplicates from FCM vs Realtime
+                        val existing = notificationDao.getNotificationByIdSync(entity.id)
+                        if (existing == null) {
+                            notificationDao.insertNotifications(listOf(entity))
+                            pushNotificationManager.showNotification(
+                                id = entity.id,
+                                title = entity.title,
+                                message = entity.message,
+                                type = entity.type
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("NotificationRepo", "💥 Realtime sync error: ${e.message}", e)
-                e.printStackTrace()
+                android.util.Log.e("NotificationRepo", "💥 Realtime sync error: ${e.message}")
             }
         }
     }
@@ -157,8 +136,50 @@ class NotificationRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * ✅ RECOVERY LOGIC: Fetches missed notifications from the remote database.
+     * This ensures that if the device was offline, we pull everything that happened
+     * during the downtime.
+     */
     override suspend fun syncNotifications(): Result<Unit> {
-        return Result.success(Unit)
+        return try {
+            val user = getCurrentUserUseCase().first() ?: return Result.failure(Exception("Not authenticated"))
+            
+            android.util.Log.d("NotificationRepo", "📥 Syncing missed notifications for user: ${user.id}")
+            
+            val remoteNotifications = postgrest["notifications"]
+                .select {
+                    filter {
+                        eq("user_id", user.id)
+                    }
+                }
+                .decodeList<NotificationDto>()
+
+            val entities = remoteNotifications.map { it.toEntity() }
+            
+            // Atomic update: only insert ones that don't exist
+            if (entities.isNotEmpty()) {
+                val settings = settingsRepository.getSettings().first()
+                val filteredEntities = entities.filter { entity ->
+                    when (entity.type) {
+                        NotificationType.TASK_ASSIGNED -> settings?.taskAssigned ?: true
+                        NotificationType.TASK_UPDATED, NotificationType.TASK_COMPLETED -> settings?.taskUpdated ?: true
+                        NotificationType.TASK_OVERDUE -> settings?.taskOverdue ?: true
+                        NotificationType.NEW_REMARK -> settings?.remarks ?: true
+                        NotificationType.JOIN_REQUEST, NotificationType.JOIN_APPROVED, NotificationType.JOIN_REJECTED -> settings?.joinRequests ?: true
+                        NotificationType.SYSTEM -> settings?.systemNotifications ?: true
+                    }
+                }
+                
+                notificationDao.insertNotifications(filteredEntities)
+                android.util.Log.d("NotificationRepo", "✅ Sync complete. Found ${filteredEntities.size} notifications.")
+            }
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("NotificationRepo", "❌ Sync failed: ${e.message}")
+            Result.failure(e)
+        }
     }
 
     override suspend fun deleteNotification(notificationId: String): Result<Unit> {
@@ -193,21 +214,7 @@ class NotificationRepositoryImpl @Inject constructor(
         relatedId: String?
     ): Result<Unit> {
         return try {
-            android.util.Log.d("NotificationRepo", "🔔 ATTEMPTING to send notification:")
-            android.util.Log.d("NotificationRepo", "   → Recipient: $recipientId")
-            android.util.Log.d("NotificationRepo", "   → Title: $title")
-            android.util.Log.d("NotificationRepo", "   → Message: $message")
-            android.util.Log.d("NotificationRepo", "   → Related ID: $relatedId")
-
-            val user = getCurrentUserUseCase().first()
-            if (user == null) {
-                android.util.Log.e("NotificationRepo", "❌ User not authenticated - cannot send notification")
-                return Result.failure(Exception("Not authenticated"))
-            }
-
-            android.util.Log.d("NotificationRepo", "   → Current User: ${user.id}")
-            android.util.Log.d("NotificationRepo", "   → Company: ${user.companyId}")
-
+            val user = getCurrentUserUseCase().first() ?: return Result.failure(Exception("Not authenticated"))
             val notificationId = java.util.UUID.randomUUID().toString()
 
             val dto = NotificationDto(
@@ -222,16 +229,24 @@ class NotificationRepositoryImpl @Inject constructor(
                 related_id = relatedId
             )
 
-            android.util.Log.d("NotificationRepo", "🚀 Inserting to Supabase...")
             postgrest["notifications"].insert(dto)
-            android.util.Log.d("NotificationRepo", "✅ SUCCESS! Notification sent to Supabase")
-            android.util.Log.d("NotificationRepo", "   → Notification ID: $notificationId")
-            android.util.Log.d("NotificationRepo", "   → Will be received by user: $recipientId via Realtime")
-
             Result.success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("NotificationRepo", "❌ FAILED to send notification: ${e.message}", e)
-            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun registerFCMToken(token: String): Result<Unit> {
+        return try {
+            val user = getCurrentUserUseCase().first() ?: return Result.failure(Exception("Not authenticated"))
+            postgrest["employees"].update(
+                mapOf("fcm_token" to token)
+            ) {
+                filter { eq("id", user.id) }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("NotificationRepo", "Failed to register FCM token: ${e.message}")
             Result.failure(e)
         }
     }

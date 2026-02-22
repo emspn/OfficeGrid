@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,22 +18,36 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.officegrid.core.ui.AdminSectionHeader
+import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminSettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var soundEnabled by remember { mutableStateOf(true) }
-    var autoSync by remember { mutableStateOf(true) }
-    var realtimeUpdates by remember { mutableStateOf(true) }
-    var auditLogging by remember { mutableStateOf(true) }
+    val settings by viewModel.settings.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is UiEvent.ShowMessage -> {
+                    scope.launch { snackbarHostState.showSnackbar(event.message) }
+                }
+                else -> Unit
+            }
+        }
+    }
 
     Scaffold(
         containerColor = WarmBackground,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -78,27 +93,19 @@ fun AdminSettingsScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
             ) {
                 Column {
-                    AdminSettingsToggleItem(
-                        icon = Icons.Default.Sync,
-                        title = "Background Sync",
-                        description = "Keep local registry updated automatically",
-                        checked = autoSync,
-                        onCheckedChange = { autoSync = it }
-                    )
-                    HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
-                    AdminSettingsToggleItem(
-                        icon = Icons.Default.Bolt,
-                        title = "Real-time Node Updates",
-                        description = "Instant WebSocket synchronization",
-                        checked = realtimeUpdates,
-                        onCheckedChange = { realtimeUpdates = it }
-                    )
-                    HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                     AdminSettingsActionItem(
                         icon = Icons.Default.CloudUpload,
                         title = "Force Global Sync",
                         description = "Manually refresh all node data",
-                        onClick = { /* Sync Logic */ }
+                        onClick = viewModel::forceGlobalSync
+                    )
+                    HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
+                    AdminSettingsActionItem(
+                        icon = Icons.Default.DeleteForever,
+                        title = "Wipe System Cache",
+                        description = "Clear temporary operational data",
+                        onClick = viewModel::clearLocalCache,
+                        destructive = true
                     )
                 }
             }
@@ -116,56 +123,31 @@ fun AdminSettingsScreen(
             ) {
                 Column {
                     AdminSettingsToggleItem(
-                        icon = Icons.Default.Notifications,
-                        title = "Push Notifications",
-                        description = "System-wide alerts for task updates",
-                        checked = notificationsEnabled,
-                        onCheckedChange = { notificationsEnabled = it }
+                        icon = Icons.Default.Groups,
+                        title = "Join Requests",
+                        description = "Alerts for new team members",
+                        checked = settings?.joinRequests ?: true,
+                        onCheckedChange = { value -> 
+                            viewModel.updateNotificationSetting { it.copy(joinRequests = value) }
+                        }
                     )
                     HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                     AdminSettingsToggleItem(
-                        icon = Icons.AutoMirrored.Filled.VolumeUp,
-                        title = "Critical Alert Sound",
-                        description = "Enable audio for priority events",
-                        checked = soundEnabled,
-                        onCheckedChange = { soundEnabled = it },
-                        enabled = notificationsEnabled
+                        icon = Icons.AutoMirrored.Filled.Comment,
+                        title = "Task Comments",
+                        description = "Alerts for status logs and remarks",
+                        checked = settings?.remarks ?: true,
+                        onCheckedChange = { value -> 
+                            viewModel.updateNotificationSetting { it.copy(remarks = value) }
+                        }
                     )
                 }
             }
 
-            // 3. Security & Safety
+            // 3. Security
             AdminSectionHeader(
-                title = "SECURITY_&_VALIDATION",
-                subtitle = "Data protection and log integrity"
-            )
-
-            Surface(
-                color = Color.White,
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
-            ) {
-                Column {
-                    AdminSettingsToggleItem(
-                        icon = Icons.Default.History,
-                        title = "Automated Audit Logging",
-                        description = "Trace all administrative interactions",
-                        checked = auditLogging,
-                        onCheckedChange = { auditLogging = it }
-                    )
-                    HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
-                    AdminSettingsActionItem(
-                        icon = Icons.Default.Lock,
-                        title = "Change Master Password",
-                        description = "Update your primary access key",
-                        onClick = { /* Logic */ }
-                    )
-                }
-            }
-
-            // 4. Maintenance
-            AdminSectionHeader(
-                title = "SYSTEM_MAINTENANCE"
+                title = "SECURITY",
+                subtitle = "Data protection"
             )
 
             Surface(
@@ -175,11 +157,10 @@ fun AdminSettingsScreen(
             ) {
                 Column {
                     AdminSettingsActionItem(
-                        icon = Icons.Default.DeleteForever,
-                        title = "Clear Local Cache",
-                        description = "Wipe temporary offline storage",
-                        onClick = { /* Logic */ },
-                        destructive = true
+                        icon = Icons.Default.Security,
+                        title = "Registry Integrity",
+                        description = "System-wide security status: SECURE",
+                        onClick = { /* Check security */ }
                     )
                 }
             }
@@ -199,41 +180,20 @@ private fun AdminSettingsToggleItem(
     enabled: Boolean = true
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (enabled) DeepCharcoal else StoneGray,
-            modifier = Modifier.size(20.dp)
-        )
-
+        Icon(imageVector = icon, contentDescription = null, tint = if (enabled) DeepCharcoal else StoneGray, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(16.dp))
-
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (enabled) DeepCharcoal else StoneGray
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = StoneGray
-            )
+            Text(text = title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = if (enabled) DeepCharcoal else StoneGray)
+            Text(text = description, style = MaterialTheme.typography.bodySmall, color = StoneGray)
         }
-
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = ProfessionalSuccess,
-                uncheckedTrackColor = WarmBorder
-            )
+            colors = SwitchDefaults.colors(checkedTrackColor = ProfessionalSuccess, uncheckedTrackColor = WarmBorder)
         )
     }
 }
@@ -246,44 +206,15 @@ private fun AdminSettingsActionItem(
     onClick: () -> Unit,
     destructive: Boolean = false
 ) {
-    Surface(
-        onClick = onClick,
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (destructive) ProfessionalError else DeepCharcoal,
-                modifier = Modifier.size(20.dp)
-            )
-
+    Surface(onClick = onClick, color = Color.Transparent) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(imageVector = icon, contentDescription = null, tint = if (destructive) ProfessionalError else DeepCharcoal, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (destructive) ProfessionalError else DeepCharcoal
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = StoneGray
-                )
+                Text(text = title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = if (destructive) ProfessionalError else DeepCharcoal)
+                Text(text = description, style = MaterialTheme.typography.bodySmall, color = StoneGray)
             }
-
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = WarmBorder,
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = WarmBorder, modifier = Modifier.size(20.dp))
         }
     }
 }

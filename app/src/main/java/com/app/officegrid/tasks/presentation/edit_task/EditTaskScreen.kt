@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,11 +44,10 @@ fun EditTaskScreen(
     val scrollState = rememberScrollState()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // ⚡ NEW: Refresh employees on EVERY screen resume
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                android.util.Log.d("EditTaskScreen", "⚡ Screen resumed - refreshing employees")
+                android.util.Log.d("EditTaskScreen", "⚡ Screen resumed - refreshing operatives")
                 viewModel.refreshEmployees()
             }
         }
@@ -98,13 +97,13 @@ fun EditTaskScreen(
                         OutlinedTextField(
                             value = title,
                             onValueChange = viewModel::onTitleChange,
-                            placeholder = { Text("Assignment Title") },
+                            placeholder = { Text("MISSION_TITLE") },
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent
                             ),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace),
                             singleLine = true,
                             enabled = !state.isLoading
                         )
@@ -146,9 +145,9 @@ fun EditTaskScreen(
                             // Operative
                             val selectedEmployee = employees.find { it.id == assignedTo }
                             AdminFormRow(
-                                label = "ASSIGNED_NODE",
-                                value = selectedEmployee?.name ?: "Select Team Member",
-                                icon = Icons.Default.Person,
+                                label = "ASSIGNED_OPERATIVE",
+                                value = selectedEmployee?.name ?: "Select Mission Lead",
+                                icon = Icons.Default.Shield,
                                 onClick = { employeeExpanded = true }
                             )
                         }
@@ -166,7 +165,7 @@ fun EditTaskScreen(
                     if (state.isLoading) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("COMMIT_CHANGES", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp))
+                        Text("COMMIT_RECONFIGURATION", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp))
                     }
                 }
 
@@ -210,7 +209,7 @@ fun EditTaskScreen(
             ) {
                 if (employees.isEmpty()) {
                     DropdownMenuItem(
-                        text = { Text("No approved team members", style = MaterialTheme.typography.labelSmall) },
+                        text = { Text("No authorized operatives", style = MaterialTheme.typography.labelSmall) },
                         onClick = { employeeExpanded = false }
                     )
                 } else {

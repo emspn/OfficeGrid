@@ -23,10 +23,10 @@ import com.app.officegrid.ui.theme.*
 @Composable
 fun JoinWorkspaceDialog(
     onDismiss: () -> Unit,
-    onJoin: (String) -> Unit
+    onJoin: (String) -> Unit,
+    isLoading: Boolean = false // Added to sync with ViewModel
 ) {
     var workspaceCode by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -53,7 +53,7 @@ fun JoinWorkspaceDialog(
                         color = DeepCharcoal
                     )
 
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = onDismiss, enabled = !isLoading) {
                         Icon(Icons.Default.Close, null, tint = StoneGray)
                     }
                 }
@@ -108,7 +108,6 @@ fun JoinWorkspaceDialog(
                     Button(
                         onClick = {
                             if (workspaceCode.isNotBlank()) {
-                                isLoading = true
                                 onJoin(workspaceCode.trim().uppercase())
                             }
                         },
@@ -156,4 +155,3 @@ fun JoinWorkspaceDialog(
         }
     }
 }
-

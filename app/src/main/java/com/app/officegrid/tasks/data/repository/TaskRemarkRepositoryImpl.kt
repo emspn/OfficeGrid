@@ -4,7 +4,7 @@ import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.tasks.data.local.TaskRemarkDao
 import com.app.officegrid.tasks.data.local.TaskRemarkEntity
 import com.app.officegrid.tasks.data.remote.SupabaseRemarkDataSource
-import com.app.officegrid.tasks.data.remote.TaskRemarkDto
+import com.app.officegrid.tasks.data.remote.dto.TaskRemarkDto
 import com.app.officegrid.tasks.data.remote.TaskRemarkRealtimeDataSource
 import com.app.officegrid.tasks.domain.model.TaskRemark
 import com.app.officegrid.tasks.domain.repository.TaskRemarkRepository
@@ -15,8 +15,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import timber.log.Timber
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class TaskRemarkRepositoryImpl @Inject constructor(
     private val remarkDao: TaskRemarkDao,
     private val remoteDataSource: SupabaseRemarkDataSource,
@@ -39,11 +44,11 @@ class TaskRemarkRepositoryImpl @Inject constructor(
         insertJob = scope.launch {
             try {
                 realtimeDataSource.subscribeToRemarkInserts().collect { remarkDto ->
-                    android.util.Log.d("TaskRemarkRepo", "Realtime INSERT: Remark for task ${remarkDto.task_id}")
+                    Timber.d("REALTIME: New remark for task ${remarkDto.task_id}")
                     remarkDao.insertRemarks(listOf(remarkDto.toEntity()))
                 }
             } catch (e: Exception) {
-                android.util.Log.e("TaskRemarkRepo", "Realtime INSERT error: ${e.message}", e)
+                Timber.e(e, "REALTIME: Insert subscription error")
             }
         }
 
@@ -52,12 +57,12 @@ class TaskRemarkRepositoryImpl @Inject constructor(
             try {
                 realtimeDataSource.subscribeToRemarkDeletes().collect { remarkId ->
                     if (remarkId.isNotEmpty()) {
-                        android.util.Log.d("TaskRemarkRepo", "Realtime DELETE: Remark $remarkId")
-                        // Note: You'd need to add deleteRemarkById method to DAO
+                        Timber.d("REALTIME: Deleted remark $remarkId")
+                        remarkDao.deleteRemarkById(remarkId)
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("TaskRemarkRepo", "Realtime DELETE error: ${e.message}", e)
+                Timber.e(e, "REALTIME: Delete subscription error")
             }
         }
     }
@@ -80,8 +85,7 @@ class TaskRemarkRepositoryImpl @Inject constructor(
             )
 
             remoteDataSource.insertRemark(remarkDto)
-            // Sync immediately after success
-            syncRemarks(taskId)
+            // No need to manually sync, Realtime will catch it
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -96,18 +100,15 @@ class TaskRemarkRepositoryImpl @Inject constructor(
 
     override suspend fun syncRemarks(taskId: String): Result<Unit> {
         return try {
-            android.util.Log.d("TaskRemarkRepo", "🔄 Syncing remarks for task: $taskId")
+            Timber.d("SYNC: Fetching remarks for task $taskId")
             val remoteRemarks = remoteDataSource.getRemarksForTask(taskId)
-            android.util.Log.d("TaskRemarkRepo", "📥 Fetched ${remoteRemarks.size} remarks from Supabase")
-
+            
             val entities = remoteRemarks.map { it.toEntity() }
             remarkDao.deleteRemarksForTask(taskId)
             remarkDao.insertRemarks(entities)
 
-            android.util.Log.d("TaskRemarkRepo", "✅ Synced ${entities.size} remarks to local DB")
             Result.success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("TaskRemarkRepo", "❌ Sync failed: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -120,11 +121,23 @@ class TaskRemarkRepositoryImpl @Inject constructor(
         createdAt = createdAt
     )
 
-    private fun TaskRemarkDto.toEntity() = TaskRemarkEntity(
-        id = id ?: java.util.UUID.randomUUID().toString(),
-        taskId = task_id,
-        message = content,
-        createdBy = user_name,
-        createdAt = 0L // Future: Handle timestamp parsing
-    )
+    private fun TaskRemarkDto.toEntity(): TaskRemarkEntity {
+        val timestamp = try {
+            if (created_at != null) {
+                OffsetDateTime.parse(created_at).toInstant().toEpochMilli()
+            } else {
+                System.currentTimeMillis()
+            }
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+
+        return TaskRemarkEntity(
+            id = id ?: java.util.UUID.randomUUID().toString(),
+            taskId = task_id,
+            message = content,
+            createdBy = user_name,
+            createdAt = timestamp
+        )
+    }
 }

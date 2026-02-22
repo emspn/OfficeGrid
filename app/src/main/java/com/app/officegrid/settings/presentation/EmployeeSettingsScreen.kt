@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,24 +17,36 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.employee.presentation.common.EmployeeTopBar
 import com.app.officegrid.ui.theme.*
+import kotlinx.coroutines.launch
 
-/**
- * 👤 EMPLOYEE SETTINGS SCREEN
- * Simple personal settings for employees
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeSettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var soundEnabled by remember { mutableStateOf(true) }
-    var autoSync by remember { mutableStateOf(true) }
+    val settings by viewModel.settings.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is UiEvent.ShowMessage -> {
+                    scope.launch { snackbarHostState.showSnackbar(event.message) }
+                }
+                else -> Unit
+            }
+        }
+    }
 
     Scaffold(
         containerColor = WarmBackground,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             EmployeeTopBar(
                 title = "SETTINGS",
@@ -60,19 +73,22 @@ fun EmployeeSettingsScreen(
                     Column {
                         EmployeeSettingsToggleItem(
                             icon = Icons.Default.Notifications,
-                            title = "Push Notifications",
-                            description = "Get alerts for new task assignments",
-                            checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it }
+                            title = "Task Assignments",
+                            description = "Alerts for new assignments",
+                            checked = settings?.taskAssigned ?: true,
+                            onCheckedChange = { value -> 
+                                viewModel.updateNotificationSetting { it.copy(taskAssigned = value) }
+                            }
                         )
                         HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                         EmployeeSettingsToggleItem(
-                            icon = Icons.AutoMirrored.Filled.VolumeUp,
-                            title = "Notification Sound",
-                            description = "Play audio for incoming alerts",
-                            checked = soundEnabled,
-                            onCheckedChange = { soundEnabled = it },
-                            enabled = notificationsEnabled
+                            icon = Icons.AutoMirrored.Filled.Comment,
+                            title = "Remarks & Updates",
+                            description = "Alerts for task discussion",
+                            checked = settings?.remarks ?: true,
+                            onCheckedChange = { value -> 
+                                viewModel.updateNotificationSetting { it.copy(remarks = value) }
+                            }
                         )
                     }
                 }
@@ -87,104 +103,25 @@ fun EmployeeSettingsScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
                 ) {
                     Column {
-                        EmployeeSettingsToggleItem(
-                            icon = Icons.Default.Sync,
-                            title = "Auto Sync",
-                            description = "Automatic background synchronization",
-                            checked = autoSync,
-                            onCheckedChange = { autoSync = it }
-                        )
-                        HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                         EmployeeSettingsActionItem(
                             icon = Icons.Default.CloudUpload,
-                            title = "Force Sync Now",
-                            description = "Manually sync your tasks",
-                            onClick = { /* Force sync */ }
-                        )
-                    }
-                }
-            }
-
-            // 3. Appearance
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EmployeeSettingsSectionHeader("APPEARANCE")
-                Surface(
-                    color = Color.White,
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
-                ) {
-                    Column {
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Palette,
-                            title = "Theme",
-                            description = "System default",
-                            onClick = { /* Change theme */ }
-                        )
-                        HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Language,
-                            title = "Language",
-                            description = "English",
-                            onClick = { /* Change language */ }
-                        )
-                    }
-                }
-            }
-
-            // 4. Account
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EmployeeSettingsSectionHeader("ACCOUNT")
-                Surface(
-                    color = Color.White,
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
-                ) {
-                    Column {
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Lock,
-                            title = "Change Password",
-                            description = "Update your account password",
-                            onClick = { /* Change password */ }
-                        )
-                        HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Security,
-                            title = "Privacy & Security",
-                            description = "Manage your privacy settings",
-                            onClick = { /* Privacy settings */ }
-                        )
-                    }
-                }
-            }
-
-            // 5. Storage
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EmployeeSettingsSectionHeader("STORAGE")
-                Surface(
-                    color = Color.White,
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorder)
-                ) {
-                    Column {
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Storage,
-                            title = "Storage Usage",
-                            description = "12.5 MB used",
-                            onClick = { /* Show storage details */ }
+                            title = "Synchronize Now",
+                            description = "Refresh local task node registry",
+                            onClick = viewModel::forceGlobalSync
                         )
                         HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                         EmployeeSettingsActionItem(
                             icon = Icons.Default.DeleteForever,
-                            title = "Clear Cache",
-                            description = "Free up space by clearing cache",
-                            onClick = { /* Clear cache */ },
+                            title = "Clear Local Cache",
+                            description = "Wipe temporary offline storage",
+                            onClick = viewModel::clearLocalCache,
                             destructive = true
                         )
                     }
                 }
             }
 
-            // 6. About
+            // 3. About
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 EmployeeSettingsSectionHeader("ABOUT")
                 Surface(
@@ -196,22 +133,8 @@ fun EmployeeSettingsScreen(
                         EmployeeSettingsActionItem(
                             icon = Icons.Default.Info,
                             title = "App Version",
-                            description = "1.0.0 (Build 2026.02.01)",
-                            onClick = { /* Show version info */ }
-                        )
-                        HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Help,
-                            title = "Help & Support",
-                            description = "Get help and contact support",
-                            onClick = { /* Help center */ }
-                        )
-                        HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
-                        EmployeeSettingsActionItem(
-                            icon = Icons.Default.Description,
-                            title = "Terms & Privacy",
-                            description = "View policies and terms",
-                            onClick = { /* Terms */ }
+                            description = "1.0.0 (Stable Production Build)",
+                            onClick = { /* Info */ }
                         )
                     }
                 }
@@ -244,9 +167,7 @@ private fun EmployeeSettingsToggleItem(
     enabled: Boolean = true
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
@@ -255,42 +176,21 @@ private fun EmployeeSettingsToggleItem(
             shape = RoundedCornerShape(8.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = if (enabled) DeepCharcoal else StoneGray,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(imageVector = icon, contentDescription = null, tint = if (enabled) DeepCharcoal else StoneGray, modifier = Modifier.size(20.dp))
             }
         }
-
         Spacer(modifier = Modifier.width(16.dp))
-
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (enabled) DeepCharcoal else StoneGray
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (enabled) StoneGray else StoneGray.copy(alpha = 0.6f)
-            )
+            Text(text = title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = if (enabled) DeepCharcoal else StoneGray)
+            Text(text = description, style = MaterialTheme.typography.bodySmall, color = if (enabled) StoneGray else StoneGray.copy(alpha = 0.6f))
         }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
                 checkedTrackColor = ProfessionalSuccess,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = StoneGray.copy(alpha = 0.3f)
+                uncheckedTrackColor = WarmBorder
             )
         )
     }
@@ -309,9 +209,7 @@ private fun EmployeeSettingsActionItem(
         color = Color.Transparent
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -320,39 +218,15 @@ private fun EmployeeSettingsActionItem(
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = if (destructive) ProfessionalError else DeepCharcoal,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Icon(imageVector = icon, contentDescription = null, tint = if (destructive) ProfessionalError else DeepCharcoal, modifier = Modifier.size(20.dp))
                 }
             }
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (destructive) ProfessionalError else DeepCharcoal
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = StoneGray
-                )
+                Text(text = title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = if (destructive) ProfessionalError else DeepCharcoal)
+                Text(text = description, style = MaterialTheme.typography.bodySmall, color = StoneGray)
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = StoneGray,
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = StoneGray, modifier = Modifier.size(20.dp))
         }
     }
 }

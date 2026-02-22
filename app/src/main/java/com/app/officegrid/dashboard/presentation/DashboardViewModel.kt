@@ -2,14 +2,13 @@ package com.app.officegrid.dashboard.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.officegrid.auth.domain.model.User
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
 import com.app.officegrid.core.ui.UiState
 import com.app.officegrid.dashboard.domain.model.Analytics
 import com.app.officegrid.dashboard.domain.repository.AnalyticsRepository
-import com.app.officegrid.tasks.domain.usecase.GetAllTasksUseCase
-import com.app.officegrid.tasks.domain.model.TaskStatus
-import com.app.officegrid.team.domain.repository.EmployeeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,61 +26,45 @@ data class DashboardData(
     val teamPerformance: List<PerformanceItem>
 )
 
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val getAnalyticsUseCase: com.app.officegrid.dashboard.domain.usecase.GetAnalyticsUseCase,
-    private val getAllTasksUseCase: GetAllTasksUseCase,
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val employeeRepository: EmployeeRepository,
     private val analyticsRepository: AnalyticsRepository
 ) : ViewModel() {
 
-    init {
-        syncData()
-    }
-
-    val currentUser = getCurrentUserUseCase()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
     private val _refreshTrigger = MutableSharedFlow<Unit>(replay = 1)
 
-    val state: StateFlow<UiState<DashboardData>> = combine(
-        getCurrentUserUseCase(),
-        _refreshTrigger.onStart { emit(Unit) }
-    ) { user, _ -> user }
+    val currentUser: StateFlow<User?> = getCurrentUserUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val state: StateFlow<UiState<DashboardData>> = currentUser
         .flatMapLatest { user ->
             if (user == null) {
-                flowOf(UiState.Error("User session not found"))
+                // 🚀 PRODUCTION FIX: Don't show error if user is still being loaded
+                // This prevents the "Retry" flash on dashboard entry
+                flowOf(UiState.Loading)
             } else {
                 combine(
-                    getAnalyticsUseCase(user.companyId),
-                    getAllTasksUseCase(),
-                    employeeRepository.getEmployees(user.companyId)
-                ) { analytics, allTasks, employees ->
-                    val analyticsObj = analytics ?: Analytics(0, 0, 0, 0, 0, emptyMap(), emptyMap())
-                    
-                    val performance = employees
-                        .filter { it.id != user.id }
-                        .map { employee ->
-                            val assignedTasks = allTasks.filter { it.assignedTo == employee.id }
-                            val completed = assignedTasks.count { it.status == TaskStatus.DONE }
-                            val rate = if (assignedTasks.isNotEmpty()) completed.toFloat() / assignedTasks.size.toFloat() else 0f
-                            
-                            PerformanceItem(
-                                employeeId = employee.id,
-                                employeeName = employee.name,
-                                tasksAssigned = assignedTasks.size,
-                                tasksCompleted = completed,
-                                completionRate = rate
-                            )
-                        }.sortedByDescending { it.completionRate }
-
-                    val successState: UiState<DashboardData> = UiState.Success(DashboardData(analyticsObj, performance))
-                    successState
+                    analyticsRepository.getAnalytics(user.companyId),
+                    flow {
+                        _refreshTrigger.onStart { emit(Unit) }.collect {
+                            val result = analyticsRepository.getTeamPerformance(user.companyId)
+                            emit(result.getOrDefault(emptyList()))
+                        }
+                    }
+                ) { analytics, performance ->
+                    val analyticsObj = analytics ?: Analytics()
+                    // ✅ FIXED: Filter out the current user (Admin) from the performance list
+                    val filteredPerformance = performance.filter { it.employeeId != user.id }
+                    UiState.Success(DashboardData(analyticsObj, filteredPerformance)) as UiState<DashboardData>
                 }.catch { e ->
-                    val errorState: UiState<DashboardData> = UiState.Error(e.message ?: "Data stream interrupted")
-                    emit(errorState)
+                    // Only show error for actual data failures
+                    emit(UiState.Error(e.message ?: "Dashboard sync interrupted"))
                 }
             }
         }
@@ -91,12 +74,15 @@ class DashboardViewModel @Inject constructor(
             initialValue = UiState.Loading
         )
 
+    init {
+        syncData()
+    }
+
     fun syncData() {
         viewModelScope.launch {
-            val user = getCurrentUserUseCase().first()
-            user?.let { 
+            val user = currentUser.value ?: getCurrentUserUseCase().filterNotNull().first()
+            user.let {
                 analyticsRepository.syncAnalytics(it.companyId)
-                employeeRepository.syncEmployees(it.companyId)
                 _refreshTrigger.emit(Unit)
             }
         }

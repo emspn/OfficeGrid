@@ -22,23 +22,7 @@ class EmployeeDashboardViewModel @Inject constructor(
     private val taskRepository: TaskRepository
 ) : ViewModel() {
 
-    init {
-        android.util.Log.d("EmployeeDashboardVM", "⚡ ViewModel initialized - starting realtime sync")
-        syncTasks()
-        startPeriodicSync()
-    }
-
     private val _workspaceFilter = MutableStateFlow<String?>(null)
-
-    private fun startPeriodicSync() {
-        viewModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(1000) // ⚡ Sync every 1 second for INSTANT updates
-                android.util.Log.d("EmployeeDashboardVM", "🔄 Auto-syncing tasks...")
-                syncTasks()
-            }
-        }
-    }
 
     val dashboardData: StateFlow<UiState<EmployeeDashboardData>> = combine(
         getCurrentUserUseCase(),
@@ -47,26 +31,25 @@ class EmployeeDashboardViewModel @Inject constructor(
         user to workspaceId
     }.flatMapLatest { (user, workspaceId) ->
             if (user == null) {
-                flowOf(UiState.Error("User not found"))
+                // 🚀 PRODUCTION FIX: Show Loading while user session is initializing
+                // Prevents the "User not found" error flash on dashboard entry
+                flowOf(UiState.Loading)
             } else {
                 getTasksUseCase(user.id).map { allTasks ->
-                    // Filter tasks assigned to this employee
                     var myTasks = allTasks.filter { it.assignedTo == user.id }
 
-                    // Further filter by workspace if specified
                     if (!workspaceId.isNullOrBlank()) {
                         myTasks = myTasks.filter { it.companyId == workspaceId }
-                        android.util.Log.d("EmployeeDashboard", "Filtered ${myTasks.size} tasks for workspace: $workspaceId")
                     }
 
                     val total = myTasks.size
                     val todo = myTasks.count { it.status == TaskStatus.TODO }
                     val inProgress = myTasks.count { it.status == TaskStatus.IN_PROGRESS }
+                    val pendingApproval = myTasks.count { it.status == TaskStatus.PENDING_COMPLETION }
                     val completed = myTasks.count { it.status == TaskStatus.DONE }
 
                     val completionRate = if (total > 0) completed.toFloat() / total.toFloat() else 0f
 
-                    // Recent tasks (last 5 sorted by due date)
                     val recentTasks = myTasks
                         .sortedBy { it.dueDate }
                         .take(5)
@@ -76,11 +59,12 @@ class EmployeeDashboardViewModel @Inject constructor(
                             totalTasks = total,
                             todoTasks = todo,
                             inProgressTasks = inProgress,
+                            pendingApprovalTasks = pendingApproval,
                             completedTasks = completed,
                             completionRate = completionRate,
                             recentTasks = recentTasks
                         )
-                    )
+                    ) as UiState<EmployeeDashboardData>
                 }
             }
         }
@@ -92,24 +76,21 @@ class EmployeeDashboardViewModel @Inject constructor(
         )
 
     init {
-        // Auto-sync tasks on initialization
         syncTasks()
     }
 
-    fun setWorkspaceFilter(workspaceId: String) {
+    fun setWorkspaceFilter(workspaceId: String?) {
         _workspaceFilter.value = workspaceId
-        android.util.Log.d("EmployeeDashboard", "Workspace filter set to: $workspaceId")
     }
 
     fun syncTasks() {
         viewModelScope.launch {
             try {
-                val user = getCurrentUserUseCase().first() ?: return@launch
-                android.util.Log.d("EmployeeDashboardVM", "⚡ Syncing tasks for employee: ${user.id}")
+                // Wait for valid user session before syncing
+                val user = getCurrentUserUseCase().filterNotNull().first()
                 taskRepository.syncTasks(user.id)
-                android.util.Log.d("EmployeeDashboardVM", "✅ Sync completed")
             } catch (e: Exception) {
-                android.util.Log.e("EmployeeDashboardVM", "❌ Sync error: ${e.message}", e)
+                android.util.Log.e("EmployeeDashboardVM", "❌ Sync error: ${e.message}")
             }
         }
     }
@@ -119,8 +100,8 @@ data class EmployeeDashboardData(
     val totalTasks: Int,
     val todoTasks: Int,
     val inProgressTasks: Int,
+    val pendingApprovalTasks: Int,
     val completedTasks: Int,
     val completionRate: Float,
     val recentTasks: List<Task>
 )
-

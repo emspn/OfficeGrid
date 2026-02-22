@@ -22,30 +22,14 @@ object SupabaseModule {
     @Singleton
     fun provideSupabaseClient(config: SupabaseConfig): SupabaseClient {
         return try {
-            // Validate URL
-            if (config.url.isBlank()) {
-                android.util.Log.e("SupabaseModule", "❌ SUPABASE_URL is EMPTY!")
-                throw IllegalStateException("Supabase URL is not configured")
-            }
+            val sanitizedUrl = config.url.trim().removeSuffix("/")
+            val sanitizedKey = config.anonKey.trim().removeSurrounding("\"").removeSurrounding("'")
+            
+            android.util.Log.d("SupabaseModule", "🚀 Initializing Supabase...")
 
-            if (!config.url.startsWith("https://")) {
-                android.util.Log.e("SupabaseModule", "❌ Invalid Supabase URL: ${config.url}")
-                throw IllegalStateException("Invalid Supabase URL: ${config.url}")
-            }
-
-            // Validate anon key - support both old (eyJ...) and new (sb_publishable_...) formats
-            if (config.anonKey.isBlank()) {
-                android.util.Log.e("SupabaseModule", "❌ SUPABASE_ANON_KEY is EMPTY!")
-                throw IllegalStateException("Supabase anon key is not configured")
-            }
-
-            android.util.Log.d("SupabaseModule", "✅ Starting Supabase initialization...")
-            android.util.Log.d("SupabaseModule", "URL: ${config.url}")
-            android.util.Log.d("SupabaseModule", "Key format: ${if (config.anonKey.startsWith("sb_")) "New publishable" else "JWT"}")
-
-            val client = createSupabaseClient(
-                supabaseUrl = config.url,
-                supabaseKey = config.anonKey
+            createSupabaseClient(
+                supabaseUrl = sanitizedUrl,
+                supabaseKey = sanitizedKey
             ) {
                 install(Auth) {
                     autoLoadFromStorage = true
@@ -54,38 +38,44 @@ object SupabaseModule {
                 install(Postgrest)
                 install(Realtime)
 
-                // Configure HTTP client with timeouts
                 httpEngine = OkHttp.create {
                     config {
                         connectTimeout(30, TimeUnit.SECONDS)
                         readTimeout(30, TimeUnit.SECONDS)
                         writeTimeout(30, TimeUnit.SECONDS)
-                        callTimeout(60, TimeUnit.SECONDS)
                         retryOnConnectionFailure(true)
                     }
 
-                    // Add interceptor to log responses
                     addInterceptor { chain ->
-                        val request = chain.request()
-                        android.util.Log.d("SupabaseHTTP", "→ ${request.method} ${request.url}")
+                        val original = chain.request()
+                        val requestBuilder = original.newBuilder()
 
+                        // ✅ Mandatory header for all Supabase REST requests
+                        requestBuilder.header("apikey", sanitizedKey)
+                        
+                        val request = requestBuilder.build()
                         val response = chain.proceed(request)
 
-                        if (!response.isSuccessful) {
-                            android.util.Log.e("SupabaseHTTP", "← ${response.code} ${response.message}")
+                        // 101 is "Switching Protocols" (Websocket), which is NOT an error
+                        val isSuccessful = response.isSuccessful || response.code == 101
+
+                        if (!isSuccessful) {
+                            val errorBody = try {
+                                response.peekBody(1024).string()
+                            } catch (e: Exception) {
+                                "Unavailable"
+                            }
+                            android.util.Log.e("SupabaseHTTP", "← ERROR ${response.code} on ${request.url}: $errorBody")
                         } else {
-                            android.util.Log.d("SupabaseHTTP", "← ${response.code} OK")
+                            android.util.Log.d("SupabaseHTTP", "← ${response.code} OK: ${request.url}")
                         }
 
                         response
                     }
                 }
             }
-
-            android.util.Log.d("SupabaseModule", "✅ Supabase client created successfully!")
-            client
         } catch (e: Exception) {
-            android.util.Log.e("SupabaseModule", "❌ FAILED: ${e.message}", e)
+            android.util.Log.e("SupabaseModule", "💥 FATAL: ${e.message}", e)
             throw e
         }
     }

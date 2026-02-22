@@ -34,13 +34,7 @@ fun SignupScreen(
     onNavigateToLogin: () -> Unit,
     viewModel: SignupViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
-    val email by viewModel.email.collectAsState()
-    val password by viewModel.password.collectAsState()
-    val fullName by viewModel.fullName.collectAsState()
-    val companyId by viewModel.companyId.collectAsState()
-    val organisationName by viewModel.organisationName.collectAsState()
-    val organisationType by viewModel.organisationType.collectAsState()
+    val state by viewModel.uiState.collectAsState()
     
     var passwordVisible by remember { mutableStateOf(false) }
     var orgTypeExpanded by remember { mutableStateOf(false) }
@@ -48,13 +42,17 @@ fun SignupScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val isLoading = state.authResult is AuthResult.Loading
+    val isSuccess = state.authResult is AuthResult.Success || state.authResult is AuthResult.NotApproved
+    val error = (state.authResult as? AuthResult.Error)?.message
+
     // Navigate to login after successful signup
-    LaunchedEffect(state.isSuccess) {
-        if (state.isSuccess) {
+    LaunchedEffect(isSuccess) {
+        if (isSuccess) {
             scope.launch {
                 snackbarHostState.showSnackbar(
-                    if (role == UserRole.ADMIN) "Organization created! Please log in."
-                    else "Account created! Please log in."
+                    if (role == UserRole.ADMIN) "Registry Created! Please log in."
+                    else "Access Initialized! Please log in."
                 )
             }
             kotlinx.coroutines.delay(1000)
@@ -101,17 +99,18 @@ fun SignupScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (role == UserRole.ADMIN) "Create Organization" else "Create Account",
+                        text = if (role == UserRole.ADMIN) "Establish Registry Hub" else "Initialize Operative Access",
                         style = MaterialTheme.typography.titleLarge.copy(
                             letterSpacing = 1.sp,
                             fontWeight = FontWeight.Black,
-                            fontSize = 20.sp
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Monospace
                         ),
                         color = DeepCharcoal
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (role == UserRole.ADMIN) "Set up your workspace" else "Join your team",
+                        text = if (role == UserRole.ADMIN) "Setup organization node" else "Join operative network",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                         color = StoneGray
                     )
@@ -126,32 +125,32 @@ fun SignupScreen(
             ) {
 
             // Section 1: Authentication Credentials
-            EliteSignupSection(label = if (role == UserRole.ADMIN) "Account Details" else "Your Information") {
+            EliteSignupSection(label = if (role == UserRole.ADMIN) "NODE_CREDENTIALS" else "OPERATIVE_DETAILS") {
                 // Full Name - Only for EMPLOYEE (admins represent organization, not individual)
                 if (role == UserRole.EMPLOYEE) {
                     EliteSignupTextField(
-                        value = fullName,
+                        value = state.fullName,
                         onValueChange = viewModel::onFullNameChange,
-                        placeholder = "Full Name",
+                        placeholder = "Operative Full Name",
                         icon = Icons.Default.Person,
-                        enabled = !state.isLoading
+                        enabled = !isLoading
                     )
                     Spacer(modifier = Modifier.height(1.dp))
                 }
 
                 EliteSignupTextField(
-                    value = email,
+                    value = state.email,
                     onValueChange = viewModel::onEmailChange,
-                    placeholder = "Email Address",
+                    placeholder = "Registry Email Address",
                     icon = Icons.Default.Email,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    enabled = !state.isLoading
+                    enabled = !isLoading
                 )
                 Spacer(modifier = Modifier.height(1.dp))
                 EliteSignupTextField(
-                    value = password,
+                    value = state.password,
                     onValueChange = viewModel::onPasswordChange,
-                    placeholder = "Password",
+                    placeholder = "Security Key (Password)",
                     icon = Icons.Default.Lock,
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -165,28 +164,28 @@ fun SignupScreen(
                             )
                         }
                     },
-                    enabled = !state.isLoading
+                    enabled = !isLoading
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Section 2: Organisation Metadata
-            EliteSignupSection(label = "Workspace Details") {
+            EliteSignupSection(label = "REGISTRY_METADATA") {
                 if (role == UserRole.ADMIN) {
                     EliteSignupTextField(
-                        value = organisationName,
+                        value = state.organisationName,
                         onValueChange = viewModel::onOrganisationNameChange,
-                        placeholder = "Organization Name",
+                        placeholder = "Registry Name",
                         icon = Icons.Default.Business,
-                        enabled = !state.isLoading
+                        enabled = !isLoading
                     )
                     Spacer(modifier = Modifier.height(1.dp))
                     
                     // Org Type Dropdown
                     ExposedDropdownMenuBox(
                         expanded = orgTypeExpanded,
-                        onExpandedChange = { if (!state.isLoading) orgTypeExpanded = it }
+                        onExpandedChange = { if (!isLoading) orgTypeExpanded = it }
                     ) {
                         Surface(
                             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
@@ -199,9 +198,9 @@ fun SignupScreen(
                                 Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp), tint = DeepCharcoal)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
-                                    text = if (organisationType.isBlank()) "Select Industry Type" else organisationType,
+                                    text = if (state.organisationType.isBlank()) "Operational Domain" else state.organisationType,
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = if (organisationType.isBlank()) WarmBorder else DeepCharcoal
+                                        color = if (state.organisationType.isBlank()) WarmBorder else DeepCharcoal
                                     ),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -228,14 +227,13 @@ fun SignupScreen(
                 }
 
                 // Company ID - Only for ADMIN (assigns unique workspace ID)
-                // Employees join workspaces after signup via workspace code
                 if (role == UserRole.ADMIN) {
                     EliteSignupTextField(
-                        value = companyId,
+                        value = state.companyId,
                         onValueChange = viewModel::onCompanyIdChange,
-                        placeholder = "Workspace ID (e.g., MYCOMPANY)",
+                        placeholder = "Hub ID (e.g., NODE_ALPHA)",
                         icon = Icons.Default.Key,
-                        enabled = !state.isLoading
+                        enabled = !isLoading
                     )
                 }
             }
@@ -243,7 +241,7 @@ fun SignupScreen(
             Spacer(modifier = Modifier.height(40.dp))
 
             // Action Buttons
-            if (state.isLoading) {
+            if (isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -270,7 +268,7 @@ fun SignupScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (role == UserRole.ADMIN) "Create Organization" else "Sign Up",
+                            text = if (role == UserRole.ADMIN) "ESTABLISH HUB" else "INITIALIZE ACCESS",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 letterSpacing = 1.sp,
                                 fontWeight = FontWeight.Black,
@@ -288,7 +286,7 @@ fun SignupScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "Already have an account? Log In",
+                        "Already authorized? Log In",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -298,7 +296,7 @@ fun SignupScreen(
             }
 
             // Error Message
-            state.error?.let { error ->
+            error?.let { errorMsg ->
                 Spacer(modifier = Modifier.height(16.dp))
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -318,7 +316,7 @@ fun SignupScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = error,
+                            text = errorMsg,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp
@@ -409,4 +407,3 @@ fun EliteSignupTextField(
         shape = RoundedCornerShape(2.dp)
     )
 }
-

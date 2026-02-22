@@ -1,5 +1,6 @@
 package com.app.officegrid.tasks.data.repository
 
+import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.common.domain.model.AuditEventType
 import com.app.officegrid.core.common.domain.repository.AuditLogRepository
@@ -13,13 +14,16 @@ import com.app.officegrid.tasks.data.remote.TaskRealtimeEvent
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.model.TaskStatus
 import com.app.officegrid.tasks.domain.repository.TaskRepository
+import com.app.officegrid.tasks.domain.repository.TaskRemarkRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,7 +33,9 @@ class TaskRepositoryImpl @Inject constructor(
     private val supabaseDataSource: SupabaseTaskDataSource,
     private val sessionManager: SessionManager,
     private val auditLogRepository: AuditLogRepository,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val authRepository: AuthRepository,
+    private val remarkRepository: TaskRemarkRepository
 ) : TaskRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -56,7 +62,6 @@ class TaskRepositoryImpl @Inject constructor(
                 when (event) {
                     is TaskRealtimeEvent.Inserted -> {
                         taskDao.insertTasks(listOf(event.task.toEntity()))
-                        notificationHelper.notifyTaskAssigned(event.task.toDomain(), "Admin")
                     }
                     is TaskRealtimeEvent.Updated -> {
                         taskDao.insertTasks(listOf(event.task.toEntity()))
@@ -111,7 +116,19 @@ class TaskRepositoryImpl @Inject constructor(
     override suspend fun createTask(task: Task): Result<Unit> {
         return try {
             val companyId = sessionManager.sessionState.value.activeCompanyId ?: return Result.failure(Exception("No active workspace"))
+            val user = authRepository.getCurrentUser().first() ?: return Result.failure(Exception("Not authenticated"))
+            
             supabaseDataSource.createTask(task.toDto(companyId))
+            
+            // 🚀 COMMUNICATION: Alert Employee
+            notificationHelper.notifyTaskAssigned(task, user.fullName)
+            
+            auditLogRepository.createAuditLog(
+                type = AuditEventType.CREATE,
+                title = "Task Created",
+                description = "Node Admin initialized task: ${task.title}"
+            )
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -122,6 +139,16 @@ class TaskRepositoryImpl @Inject constructor(
         return try {
             val companyId = sessionManager.sessionState.value.activeCompanyId ?: return Result.failure(Exception("No active workspace"))
             supabaseDataSource.updateTask(task.toDto(companyId))
+            
+            // Trigger Notification
+            notificationHelper.notifyTaskUpdated(task)
+            
+            auditLogRepository.createAuditLog(
+                type = AuditEventType.UPDATE,
+                title = "Task Updated",
+                description = "Task '${task.title}' was modified by Admin"
+            )
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -132,6 +159,13 @@ class TaskRepositoryImpl @Inject constructor(
         return try {
             supabaseDataSource.deleteTask(taskId)
             taskDao.deleteTask(taskId)
+            
+            auditLogRepository.createAuditLog(
+                type = AuditEventType.DELETE,
+                title = "Task Deleted",
+                description = "Task unit $taskId removed from operational registry"
+            )
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -142,6 +176,21 @@ class TaskRepositoryImpl @Inject constructor(
         return try {
             supabaseDataSource.updateTaskStatus(taskId, status.name)
             taskDao.updateTaskStatus(taskId, status)
+            
+            // 🚀 COMMUNICATION: Auto-log history & Notify Admin
+            val taskResult = getTaskById(taskId)
+            taskResult.onSuccess { task ->
+                val statusText = status.name.replace("_", " ")
+                remarkRepository.addTaskRemark(taskId, "System Log: Status transitioned to $statusText")
+                notificationHelper.notifyStatusChange(task, status)
+            }
+            
+            auditLogRepository.createAuditLog(
+                type = AuditEventType.STATUS_CHANGE,
+                title = "Status Sync",
+                description = "Task $taskId set to ${status.name}"
+            )
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

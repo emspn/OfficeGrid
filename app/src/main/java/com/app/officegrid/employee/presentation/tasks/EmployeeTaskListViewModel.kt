@@ -28,27 +28,24 @@ class EmployeeTaskListViewModel @Inject constructor(
 
     private val _workspaceFilter = MutableStateFlow<String?>(null)
 
-    // ⚡ REALTIME COMMUNICATION HUB
+    // ⚡ REALTIME COMMUNICATION HUB - Properly reactive
     val tasks: StateFlow<UiState<List<Task>>> = combine(
         getCurrentUserUseCase(),
-        _workspaceFilter,
-        _searchQuery,
-        _selectedStatus
-    ) { user, workspaceId, query, statusFilter ->
+        _workspaceFilter
+    ) { user, workspaceId ->
+        user to workspaceId
+    }.flatMapLatest { (user, workspaceId) ->
         if (user == null || workspaceId == null) {
-            UiState.Loading
+            flowOf(UiState.Loading)
         } else {
-            // Observe the repository which is now "Workspace Aware"
-            taskRepository.getTasks(user.id).map { allTasks ->
+            // Observe the repository which is now "Workspace Aware" and reactive
+            taskRepository.getTasks(user.id).combine(
+                combine(_searchQuery, _selectedStatus) { q, s -> q to s }
+            ) { allTasks, (query, statusFilter) ->
                 android.util.Log.d("EmployeeTaskListVM", "📊 Received ${allTasks.size} total tasks from repo")
                 
-                var filtered = allTasks.filter { it.companyId == workspaceId }
+                var filtered = allTasks.filter { it.companyId == workspaceId && it.assignedTo == user.id }
                 
-                // 🚀 HERO FIX: Ensure we are filtering by the CORRECT user ID
-                // Check if any tasks exist for this user at all
-                val userTasks = filtered.filter { it.assignedTo == user.id }
-                android.util.Log.d("EmployeeTaskListVM", "   → Found ${userTasks.size} tasks assigned to ${user.id}")
-
                 if (query.isNotBlank()) {
                     filtered = filtered.filter { it.title.contains(query, ignoreCase = true) }
                 }
@@ -56,8 +53,8 @@ class EmployeeTaskListViewModel @Inject constructor(
                     filtered = filtered.filter { it.status == statusFilter }
                 }
                 
-                UiState.Success(userTasks.sortedByDescending { it.createdAt })
-            }.first()
+                UiState.Success(filtered.sortedByDescending { it.createdAt })
+            }
         }
     }.stateIn(
         scope = viewModelScope,

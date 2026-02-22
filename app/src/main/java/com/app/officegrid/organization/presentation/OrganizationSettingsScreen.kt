@@ -33,7 +33,7 @@ fun OrganizationSettingsScreen(
     Scaffold(
         topBar = {
             AdminTopBar(
-                title = "ORGANIZATION_SPECIFICATIONS",
+                title = "HUB_SPECIFICATIONS",
                 onBackClick = onNavigateBack
             )
         },
@@ -76,10 +76,10 @@ private fun OrganizationContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Company Info Section
+        // Core Hub Section
         AdminSectionHeader(
             title = "CORE_IDENTITY",
-            subtitle = "Verified organizational identifiers"
+            subtitle = "Verified hub identifiers"
         )
 
         Surface(
@@ -89,14 +89,14 @@ private fun OrganizationContent(
         ) {
             Column {
                 OrganizationTextField(
-                    label = "NAME",
+                    label = "NODE_NAME",
                     value = data.companyName,
                     icon = Icons.Default.Business,
                     enabled = false
                 )
                 HorizontalDivider(color = WarmBorder, modifier = Modifier.padding(horizontal = 16.dp))
                 OrganizationTextField(
-                    label = "Workspace ID",
+                    label = "HUB_IDENTIFIER",
                     value = data.companyId,
                     icon = Icons.Default.Badge,
                     enabled = false
@@ -114,7 +114,7 @@ private fun OrganizationContent(
         // Plan & Limits
         AdminSectionHeader(
             title = "RESOURCE_ALLOCATION",
-            subtitle = "Operational limits and subscription status"
+            subtitle = "Operational limits and deployment status"
         )
 
         PlanInfoCard(
@@ -132,7 +132,7 @@ private fun OrganizationContent(
         )
 
         DangerActionCard(
-            title = "DECOMMISSION_ORGANIZATION",
+            title = "DECOMMISSION_HUB",
             description = "Permanently purge all data and node access. THIS_ACTION_IS_FINAL.",
             actionLabel = "PURGE",
             onAction = { /* Show confirmation dialog */ }
@@ -207,12 +207,12 @@ private fun PlanInfoCard(
 
             Spacer(Modifier.height(24.dp))
 
-            // Employees Usage
+            // Operatives Usage
             PlanMetricRow(
-                label = "Team Size",
+                label = "OPERATIVE_REGISTRY_SIZE",
                 value = "$currentEmployees / $maxEmployees",
                 progress = if (maxEmployees > 0) currentEmployees.toFloat() / maxEmployees.toFloat() else 0f,
-                icon = Icons.Default.People
+                icon = Icons.Default.Groups
             )
 
             Spacer(Modifier.height(16.dp))

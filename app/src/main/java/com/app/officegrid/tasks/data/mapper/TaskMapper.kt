@@ -1,7 +1,7 @@
 package com.app.officegrid.tasks.data.mapper
 
 import com.app.officegrid.tasks.data.local.TaskEntity
-import com.app.officegrid.tasks.data.remote.TaskDto
+import com.app.officegrid.tasks.data.remote.dto.TaskDto
 import com.app.officegrid.tasks.domain.model.Task
 import com.app.officegrid.tasks.domain.model.TaskPriority
 import com.app.officegrid.tasks.domain.model.TaskStatus

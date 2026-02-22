@@ -2,117 +2,125 @@ package com.app.officegrid.team.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
-import com.app.officegrid.core.notification.NotificationHelper
+import com.app.officegrid.core.common.SessionManager
+import com.app.officegrid.team.domain.model.Employee
 import com.app.officegrid.team.domain.model.EmployeeStatus
 import com.app.officegrid.team.domain.repository.EmployeeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TeamViewModel @Inject constructor(
     private val repository: EmployeeRepository,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val notificationHelper: NotificationHelper
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(TeamUiState())
-    val state: StateFlow<TeamUiState> = _state.asStateFlow()
+    private val _successMessage = MutableStateFlow<String?>(null)
+    private val _error = MutableStateFlow<String?>(null)
+    private val _isLoading = MutableStateFlow(false)
+    
+    // For Optimistic UI updates
+    private val _optimisticUpdates = MutableStateFlow<Map<String, EmployeeStatus?>>(emptyMap())
 
-    init {
-        observeTeam()
-        // Initial sync
-        syncTeam()
-    }
-
-    private fun observeTeam() {
-        viewModelScope.launch {
-            getCurrentUserUseCase().collectLatest { user ->
-                if (user != null) {
-                    repository.getEmployees(user.companyId).collect { employees ->
-                        _state.update {
-                            it.copy(
-                                // Filter out the current admin from the list
-                                pendingRequests = employees.filter { e -> e.status == EmployeeStatus.PENDING && e.id != user.id },
-                                approvedMembers = employees.filter { e -> e.status == EmployeeStatus.APPROVED && e.id != user.id }
-                            )
-                        }
-                    }
+    val state: StateFlow<TeamUiState> = sessionManager.sessionState
+        .flatMapLatest { session ->
+            if (session.activeCompanyId != null) {
+                repository.getEmployees(session.activeCompanyId)
+            } else {
+                flowOf(emptyList())
+            }
+        }
+        .combine(_optimisticUpdates) { employees, optimistic ->
+            employees.mapNotNull { employee ->
+                val optimisticStatus = optimistic[employee.id]
+                if (optimisticStatus == null && optimistic.containsKey(employee.id)) {
+                    null
+                } else if (optimisticStatus != null) {
+                    employee.copy(status = optimisticStatus)
+                } else {
+                    employee
                 }
             }
         }
+        .combine(_isLoading) { employees, loading ->
+            employees to loading
+        }
+        .combine(sessionManager.sessionState) { (employees, loading), session ->
+            TeamUiState(
+                approvedMembers = employees.filter { it.status == EmployeeStatus.APPROVED },
+                pendingRequests = employees.filter { it.status == EmployeeStatus.PENDING },
+                isLoading = loading,
+                currentUserId = session.userId
+            )
+        }
+        .combine(_successMessage) { state, msg -> state.copy(successMessage = msg) }
+        .combine(_error) { state, err -> state.copy(error = err) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = TeamUiState(isLoading = true)
+        )
+
+    init {
+        syncTeam()
     }
 
     fun syncTeam() {
+        val companyId = sessionManager.sessionState.value.activeCompanyId ?: return
         viewModelScope.launch {
-            val user = getCurrentUserUseCase().first() ?: return@launch
-            // Don't set isLoading to true if we're just background syncing to avoid flicker
-            repository.syncEmployees(user.companyId)
-                .onFailure { error -> _state.update { it.copy(error = error.message) } }
+            _isLoading.value = true
+            repository.syncEmployees(companyId)
+                .onFailure { _error.value = it.localizedMessage }
+            _isLoading.value = false
         }
     }
 
     fun approveEmployee(employeeId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-
-            // Get employee info before approving
-            val user = getCurrentUserUseCase().first()
-            val employees = _state.value.pendingRequests + _state.value.approvedMembers
-            val employee = employees.find { it.id == employeeId }
-
+            _optimisticUpdates.update { it + (employeeId to EmployeeStatus.APPROVED) }
+            
             repository.updateEmployeeStatus(employeeId, EmployeeStatus.APPROVED)
-                .onSuccess {
-                    _state.update { it.copy(isLoading = false, successMessage = "✅ Team member approved successfully!") }
-
-                    // ✅ Send notification to OPERATIVE that they've been approved
-                    if (employee != null && user != null) {
-                        notificationHelper.notifyJoinApproved(
-                            employeeId = employeeId,
-                            workspaceName = user.companyName ?: "workspace"
-                        )
-                    }
+                .onSuccess { 
+                    _successMessage.value = "Employee approved successfully"
+                    _optimisticUpdates.update { it - employeeId }
                 }
-                .onFailure { e -> _state.update { it.copy(isLoading = false, error = e.message ?: "❌ Unable to approve. Please try again.") } }
-        }
-    }
-
-    fun removeEmployee(employeeId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-
-            // Get employee info before removing
-            val user = getCurrentUserUseCase().first()
-            val employees = _state.value.pendingRequests + _state.value.approvedMembers
-            val employee = employees.find { it.id == employeeId }
-
-            repository.deleteEmployee(employeeId)
-                .onSuccess {
-                    _state.update { it.copy(isLoading = false, successMessage = "Team member removed successfully") }
-
-                    // ✅ Send notification to OPERATIVE that they've been rejected (if pending)
-                    if (employee != null && employee.status == EmployeeStatus.PENDING && user != null) {
-                        notificationHelper.notifyJoinRejected(
-                            employeeId = employeeId,
-                            workspaceName = user.companyName ?: "workspace"
-                        )
-                    }
+                .onFailure { 
+                    _error.value = it.localizedMessage
+                    _optimisticUpdates.update { it - employeeId }
                 }
-                .onFailure { e -> _state.update { it.copy(isLoading = false, error = e.message ?: "❌ Unable to remove. Please try again.") } }
         }
     }
 
     fun updateRole(employeeId: String, newRole: String) {
         viewModelScope.launch {
             repository.updateEmployeeRole(employeeId, newRole)
-                .onSuccess { _state.update { it.copy(successMessage = "✅ Role updated successfully!") } }
-                .onFailure { e -> _state.update { it.copy(error = e.message ?: "❌ Unable to update role.") } }
+                .onSuccess { _successMessage.value = "Role updated to $newRole" }
+                .onFailure { _error.value = it.localizedMessage }
+        }
+    }
+
+    fun removeEmployee(employeeId: String) {
+        viewModelScope.launch {
+            _optimisticUpdates.update { it + (employeeId to null) }
+            
+            repository.deleteEmployee(employeeId)
+                .onSuccess { 
+                    _successMessage.value = "Removed from workspace"
+                    _optimisticUpdates.update { it - employeeId }
+                }
+                .onFailure { 
+                    _error.value = it.localizedMessage
+                    _optimisticUpdates.update { it - employeeId }
+                }
         }
     }
 
     fun clearMessages() {
-        _state.update { it.copy(successMessage = null, error = null) }
+        _successMessage.value = null
+        _error.value = null
     }
 }

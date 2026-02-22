@@ -18,7 +18,6 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -44,7 +43,6 @@ class OfficeGridNotificationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startListening()
-        // 🚀 HERO FIX: START_STICKY ensures the service restarts if killed by OS
         return START_STICKY
     }
 
@@ -53,19 +51,27 @@ class OfficeGridNotificationService : Service() {
 
         realtimeJob = serviceScope.launch {
             try {
+                // Wait for a valid session to avoid 403s
                 val user = authRepository.getCurrentUser().first() ?: return@launch
                 
                 android.util.Log.d("SentinelService", "⚡ Sentinel Active: Listening for User ${user.id}")
                 
-                val channel = realtime.channel("notifications_sentinel")
-                channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                val channel = realtime.channel("notifications_sentinel_${user.id}")
+                
+                // ✅ FIX: Define flow BEFORE subscribing
+                val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
                     table = "notifications"
-                }.collect { action ->
+                }
+
+                android.util.Log.d("SentinelService", "📡 Subscribing to sentinel channel...")
+                channel.subscribe()
+                
+                changeFlow.collect { action ->
                     val rawData = action.record
                     val recipientId = rawData["user_id"]?.toString()?.removeSurrounding("\"")
                     
                     if (recipientId == user.id) {
-                        val title = rawData["title"]?.toString()?.removeSurrounding("\"") ?: "OFFICE_GRID_UPDATE"
+                        val title = rawData["title"]?.toString()?.removeSurrounding("\"") ?: "OfficeGrid Update"
                         val message = rawData["message"]?.toString()?.removeSurrounding("\"") ?: ""
                         val typeStr = rawData["type"]?.toString()?.removeSurrounding("\"") ?: "SYSTEM"
                         
@@ -79,11 +85,9 @@ class OfficeGridNotificationService : Service() {
                         )
                     }
                 }
-                channel.subscribe()
             } catch (e: Exception) {
                 android.util.Log.e("SentinelService", "❌ Error in sentinel stream: ${e.message}")
-                // Auto-retry after delay
-                delay(5000)
+                delay(10000) // Longer delay on error
                 startListening()
             }
         }
