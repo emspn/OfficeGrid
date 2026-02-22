@@ -3,7 +3,6 @@ package com.app.officegrid.core.ui
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,8 +19,8 @@ import com.app.officegrid.ui.theme.*
 import kotlinx.coroutines.delay
 
 /**
- * ✨ ELITE SPLASH SCREEN
- * Professional brand reveal using the OfficeGrid logo.
+ * ✨ OPTIMIZED PRODUCTION SPLASH SCREEN
+ * Fast brand reveal that transitions immediately once session is ready.
  */
 @Composable
 fun SplashScreen(
@@ -31,22 +30,22 @@ fun SplashScreen(
 
     val alpha by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
-        animationSpec = tween(1200, easing = FastOutSlowInEasing),
+        animationSpec = tween(800, easing = FastOutSlowInEasing), // Faster reveal
         label = "alpha"
     )
 
     val scale by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0.7f,
+        targetValue = if (startAnimation) 1f else 0.8f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = Spring.StiffnessMedium // Snappier spring
         ),
         label = "scale"
     )
 
     LaunchedEffect(Unit) {
         startAnimation = true
-        delay(2500)
+        delay(1000) // Reduced from 2500ms to 1000ms for production speed
         onTimeout()
     }
 
@@ -64,10 +63,7 @@ fun SplashScreen(
                     .alpha(alpha)
                     .scale(scale)
             ) {
-                // ✅ LOGO INTEGRATION (Fixed: Removed non-existent 'shape' parameter)
-                OfficeGridLogo(
-                    size = 120.dp
-                )
+                OfficeGridLogo(size = 120.dp)
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -93,7 +89,6 @@ fun SplashScreen(
                 )
             }
             
-            // Bottom progress bar
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

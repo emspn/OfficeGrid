@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.app.officegrid.core.common.SessionManager
 import com.app.officegrid.core.ui.AdminSectionHeader
 import com.app.officegrid.team.domain.model.Employee
 import com.app.officegrid.ui.theme.*
@@ -29,11 +28,9 @@ import com.app.officegrid.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamScreen(
-    viewModel: TeamViewModel = hiltViewModel(),
-    sessionManager: SessionManager = hiltViewModel() // Used to identify current user
+    viewModel: TeamViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val sessionState by sessionManager.sessionState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var selectedEmployeeForOptions by remember { mutableStateOf<Employee?>(null) }
@@ -111,7 +108,7 @@ fun TeamScreen(
                         }
                     } else {
                         items(state.approvedMembers) { employee ->
-                            val isSelf = employee.id == sessionState.userId
+                            val isSelf = employee.id == state.currentUserId
                             EliteOperativeRow(
                                 employee = employee,
                                 isSelf = isSelf,
