@@ -5,18 +5,27 @@ import com.app.officegrid.auth.domain.model.User
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
 import com.app.officegrid.core.common.UserRole
 import com.app.officegrid.core.ui.UiState
-import com.app.officegrid.tasks.domain.model.*
+import com.app.officegrid.tasks.domain.model.Task
+import com.app.officegrid.tasks.domain.model.TaskPriority
+import com.app.officegrid.tasks.domain.model.TaskStatus
 import com.app.officegrid.tasks.domain.repository.TaskRepository
 import com.app.officegrid.tasks.domain.usecase.GetTasksUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import java.util.Calendar
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,6 +51,9 @@ class TaskListViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         whenever(getCurrentUserUseCase()).thenReturn(flowOf(testUser))
+        runBlocking {
+            whenever(repository.syncTasks(any())).thenReturn(Result.success(Unit))
+        }
     }
 
     @After
@@ -50,17 +62,19 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun `when monthly filter is applied, should filter missions within 30 days`() = runTest {
+    fun `monthly filter includes tasks due within 30 days`() = runTest(testDispatcher) {
         val now = Calendar.getInstance().timeInMillis
         val insideRangeTask = createTask("task-1", now + 86400000) // Tomorrow
         val outsideRangeTask = createTask("task-2", now + (40L * 24 * 60 * 60 * 1000)) // 40 days later
-        
-        whenever(getTasksUseCase(any())).thenReturn(flowOf(listOf(insideRangeTask, outsideRangeTask)))
+
+        whenever(repository.observeUserTasks(testUser.id, testUser.companyId))
+            .thenReturn(flowOf(listOf(insideRangeTask, outsideRangeTask)))
 
         viewModel = TaskListViewModel(getTasksUseCase, getCurrentUserUseCase, repository)
-        runCurrent()
 
         viewModel.state.test {
+            assert(awaitItem() is UiState.Loading)
+            advanceUntilIdle()
             val state = awaitItem()
             assert(state is UiState.Success)
             val data = (state as UiState.Success).data
@@ -70,21 +84,21 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun `when custom range is selected, should filter missions accurately`() = runTest {
+    fun `custom range filters tasks accurately`() = runTest(testDispatcher) {
         val start = 1000L
         val end = 2000L
         val inside = createTask("in", 1500L)
         val outside = createTask("out", 3000L)
 
-        whenever(getTasksUseCase(any())).thenReturn(flowOf(listOf(inside, outside)))
+        whenever(repository.observeUserTasks(testUser.id, testUser.companyId))
+            .thenReturn(flowOf(listOf(inside, outside)))
 
         viewModel = TaskListViewModel(getTasksUseCase, getCurrentUserUseCase, repository)
-        runCurrent()
-
         viewModel.onDateRangeSelected(start, end)
-        runCurrent()
 
         viewModel.state.test {
+            assert(awaitItem() is UiState.Loading)
+            advanceUntilIdle()
             val state = awaitItem()
             assert(state is UiState.Success)
             val data = (state as UiState.Success).data
@@ -94,24 +108,24 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun `onSearchQueryChange should update results in real-time`() = runTest {
+    fun `search query updates results`() = runTest(testDispatcher) {
         val taskA = createTask("a", title = "Alpha Mission")
         val taskB = createTask("b", title = "Beta Objective")
 
-        whenever(getTasksUseCase(any())).thenReturn(flowOf(listOf(taskA, taskB)))
+        whenever(repository.observeUserTasks(testUser.id, testUser.companyId))
+            .thenReturn(flowOf(listOf(taskA, taskB)))
 
         viewModel = TaskListViewModel(getTasksUseCase, getCurrentUserUseCase, repository)
-        runCurrent()
-
         viewModel.onSearchQueryChange("Alpha")
-        runCurrent()
 
         viewModel.state.test {
+            assert(awaitItem() is UiState.Loading)
+            advanceUntilIdle()
             val state = awaitItem()
             assert(state is UiState.Success)
             val data = (state as UiState.Success).data
             assertEquals(1, data.size)
-            assert(data[0].title.contains("Alpha"))
+            assertEquals("a", data[0].id)
         }
     }
 

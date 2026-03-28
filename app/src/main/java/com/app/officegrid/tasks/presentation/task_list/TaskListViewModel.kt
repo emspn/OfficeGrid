@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.officegrid.auth.domain.model.User
 import com.app.officegrid.auth.domain.usecase.GetCurrentUserUseCase
+import com.app.officegrid.core.common.UserRole
 import com.app.officegrid.core.ui.UiEvent
 import com.app.officegrid.core.ui.UiState
 import com.app.officegrid.core.ui.asUiState
@@ -49,7 +50,6 @@ class TaskListViewModel @Inject constructor(
     private val _sortOption = MutableStateFlow(TaskSortOption.DUE_DATE_ASC)
     val sortOption: StateFlow<TaskSortOption> = _sortOption.asStateFlow()
 
-    // ✅ Default to MONTHLY as requested
     private val _timelineFilter = MutableStateFlow(TaskTimelineFilter.MONTHLY)
     val timelineFilter: StateFlow<TaskTimelineFilter> = _timelineFilter.asStateFlow()
 
@@ -82,66 +82,66 @@ class TaskListViewModel @Inject constructor(
             range = @Suppress("UNCHECKED_CAST") (args[6] as Pair<Long, Long>?)
         )
     }.flatMapLatest { params ->
-        val userId = params.user?.id ?: "anonymous"
-        getTasksUseCase(userId).map { tasks ->
-            var filteredTasks = tasks
-
-            if (params.status != null) {
-                filteredTasks = filteredTasks.filter { it.status == params.status }
+        val user = params.user
+        if (user == null) {
+            flowOf(UiState.Loading)
+        } else {
+            val missionStream = if (user.role == UserRole.ADMIN) {
+                repository.observeCompanyTasks(user.companyId)
+            } else {
+                repository.observeUserTasks(user.id, user.companyId)
             }
 
-            if (params.priority != null) {
-                filteredTasks = filteredTasks.filter { it.priority == params.priority }
-            }
+            missionStream.map { tasks ->
+                var filteredTasks = tasks
 
-            filteredTasks = when (params.timeline) {
-                TaskTimelineFilter.ALL -> filteredTasks
-                TaskTimelineFilter.TODAY -> filterByDays(filteredTasks, 0)
-                TaskTimelineFilter.THIS_WEEK -> filterByDays(filteredTasks, 7)
-                TaskTimelineFilter.MONTHLY -> filterByDays(filteredTasks, 30)
-                TaskTimelineFilter.YEARLY -> filterByDays(filteredTasks, 365)
-                TaskTimelineFilter.CUSTOM -> {
-                    val range = params.range
-                    if (range != null) {
-                        filteredTasks.filter { it.dueDate in range.first..range.second }
-                    } else filteredTasks
+                if (params.status != null) {
+                    filteredTasks = filteredTasks.filter { it.status == params.status }
                 }
-            }
 
-            if (params.query.isNotBlank()) {
-                filteredTasks = filteredTasks.filter {
-                    it.title.contains(params.query, ignoreCase = true) ||
-                    it.description.contains(params.query, ignoreCase = true)
+                if (params.priority != null) {
+                    filteredTasks = filteredTasks.filter { it.priority == params.priority }
                 }
-            }
 
-            filteredTasks.sortByOption(params.sortOption)
+                filteredTasks = when (params.timeline) {
+                    TaskTimelineFilter.ALL -> filteredTasks
+                    TaskTimelineFilter.TODAY -> filterByTimeline(filteredTasks, 0)
+                    TaskTimelineFilter.THIS_WEEK -> filterByTimeline(filteredTasks, 7)
+                    TaskTimelineFilter.MONTHLY -> filterByTimeline(filteredTasks, 30)
+                    TaskTimelineFilter.YEARLY -> filterByTimeline(filteredTasks, 365)
+                    TaskTimelineFilter.CUSTOM -> {
+                        val range = params.range
+                        if (range != null) {
+                            filteredTasks.filter { it.dueDate in range.first..range.second }
+                        } else filteredTasks
+                    }
+                }
+
+                if (params.query.isNotBlank()) {
+                    filteredTasks = filteredTasks.filter {
+                        it.title.contains(params.query, ignoreCase = true) ||
+                        it.description.contains(params.query, ignoreCase = true)
+                    }
+                }
+
+                UiState.Success(filteredTasks.sortByOption(params.sortOption)) as UiState<List<Task>>
+            }
         }
-    }.asUiState()
-    .stateIn(
+    }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = UiState.Loading
     )
 
-    private fun filterByDays(tasks: List<Task>, days: Int): List<Task> {
+    private fun filterByTimeline(tasks: List<Task>, daysForward: Int): List<Task> {
         val calendar = Calendar.getInstance()
-        val now = calendar.timeInMillis
+        calendar.add(Calendar.DAY_OF_YEAR, daysForward)
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
         
-        return if (days == 0) {
-            val startOfDay = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-            val endOfDay = startOfDay + 86400000
-            tasks.filter { it.dueDate in startOfDay..endOfDay }
-        } else {
-            calendar.add(Calendar.DAY_OF_YEAR, days)
-            val end = calendar.timeInMillis
-            tasks.filter { it.dueDate in now..end }
-        }
+        val cutoffTimestamp = calendar.timeInMillis
+        return tasks.filter { it.dueDate <= cutoffTimestamp }
     }
 
     init {
@@ -161,22 +161,12 @@ class TaskListViewModel @Inject constructor(
         _selectedStatus.value = status
     }
 
-    fun onSearchQueryChange(query: String) {
-        _searchQuery.value = query
-    }
-
-    fun onSearchClear() {
-        _searchQuery.value = ""
-    }
-
-    fun onSortOptionSelected(sortOption: TaskSortOption) {
-        _sortOption.value = sortOption
-    }
+    fun onSearchQueryChange(query: String) { _searchQuery.value = query }
+    fun onSearchClear() { _searchQuery.value = "" }
+    fun onSortOptionSelected(sortOption: TaskSortOption) { _sortOption.value = sortOption }
 
     fun onTaskClick(taskId: String) {
-        viewModelScope.launch {
-            _events.send(UiEvent.Navigate("task_detail/$taskId"))
-        }
+        viewModelScope.launch { _events.send(UiEvent.Navigate("task_detail/$taskId")) }
     }
 
     fun updateTaskStatus(taskId: String, newStatus: TaskStatus) {
@@ -190,7 +180,7 @@ class TaskListViewModel @Inject constructor(
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
             repository.deleteTask(taskId)
-                .onSuccess { _events.send(UiEvent.ShowMessage("Unit removed")) }
+                .onSuccess { _events.send(UiEvent.ShowMessage("Mission removed")) }
                 .onFailure { _events.send(UiEvent.ShowMessage("Deletion failed")) }
         }
     }
@@ -198,7 +188,7 @@ class TaskListViewModel @Inject constructor(
     fun syncTasks() {
         viewModelScope.launch {
             val user = currentUser.value ?: return@launch
-            repository.syncTasks(user.id)
+            repository.syncTasks(user.companyId)
         }
     }
 

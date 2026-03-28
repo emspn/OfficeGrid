@@ -88,7 +88,7 @@ class EmployeeDashboardViewModel @Inject constructor(
             try {
                 // Wait for valid user session before syncing
                 val user = getCurrentUserUseCase().filterNotNull().first()
-                taskRepository.syncTasks(user.id)
+                taskRepository.syncTasks(user.companyId)
             } catch (e: Exception) {
                 android.util.Log.e("EmployeeDashboardVM", "❌ Sync error: ${e.message}")
             }

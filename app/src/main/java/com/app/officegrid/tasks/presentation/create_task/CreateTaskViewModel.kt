@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
@@ -69,15 +70,15 @@ class CreateTaskViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val user = getCurrentUserUseCase().first() ?: return@launch
-                
-                android.util.Log.d("CreateTaskVM", "🔄 Loading employees for company: ${user.companyId}")
+
+                Timber.d("Loading employees for company: ${user.companyId}")
 
                 // First sync from Supabase
                 employeeRepository.syncEmployees(user.companyId)
 
                 // Then load from database and filter
                 employeeRepository.getEmployees(user.companyId).collect { employees ->
-                    android.util.Log.d("CreateTaskVM", "📊 Total employees fetched: ${employees.size}")
+                    Timber.d("Total employees fetched: ${employees.size}")
 
                     val approvedEmployees = employees.filter {
                         it.status == EmployeeStatus.APPROVED && it.id != user.id
@@ -86,7 +87,7 @@ class CreateTaskViewModel @Inject constructor(
                     _employees.value = approvedEmployees
                 }
             } catch (e: Exception) {
-                android.util.Log.e("CreateTaskVM", "❌ Failed to load employees: ${e.message}", e)
+                Timber.e(e, "Failed to load employees")
                 _events.send(UiEvent.ShowMessage("Failed to load employees"))
             }
         }

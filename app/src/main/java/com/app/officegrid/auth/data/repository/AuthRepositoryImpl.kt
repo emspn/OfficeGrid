@@ -7,7 +7,6 @@ import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.core.common.UserRole
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
-import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -16,8 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
-    private val remoteDataSource: SupabaseAuthDataSource,
-    private val postgrest: Postgrest
+    private val remoteDataSource: SupabaseAuthDataSource
 ) : AuthRepository {
 
     override suspend fun login(email: String, password: String): Result<UserSession> {
@@ -88,17 +86,9 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateActiveCompany(companyId: String): Result<Unit> {
-        return try {
-            val user = remoteDataSource.getCurrentUserInfo() ?: throw Exception("Not logged in")
-            postgrest["employees"].update(
-                mapOf("company_id" to companyId)
-            ) {
-                filter { eq("id", user.id) }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        // Workspace selection is session-local. Avoid mutating employees.company_id,
+        // which can corrupt multi-workspace memberships.
+        return Result.success(Unit)
     }
 
     private fun UserInfo.toDomain(): User {

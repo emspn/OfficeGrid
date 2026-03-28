@@ -1,5 +1,6 @@
 package com.app.officegrid.core.di
 
+import com.app.officegrid.BuildConfig
 import com.app.officegrid.core.network.SupabaseConfig
 import dagger.Module
 import dagger.Provides
@@ -24,8 +25,11 @@ object SupabaseModule {
         return try {
             val sanitizedUrl = config.url.trim().removeSuffix("/")
             val sanitizedKey = config.anonKey.trim().removeSurrounding("\"").removeSurrounding("'")
-            
-            android.util.Log.d("SupabaseModule", "🚀 Initializing Supabase...")
+            val isDebug = BuildConfig.DEBUG
+
+            if (isDebug) {
+                android.util.Log.d("SupabaseModule", "Initializing Supabase client")
+            }
 
             createSupabaseClient(
                 supabaseUrl = sanitizedUrl,
@@ -50,24 +54,26 @@ object SupabaseModule {
                         val original = chain.request()
                         val requestBuilder = original.newBuilder()
 
-                        // ✅ Mandatory header for all Supabase REST requests
+                        // Mandatory header for all Supabase REST requests
                         requestBuilder.header("apikey", sanitizedKey)
-                        
+
                         val request = requestBuilder.build()
                         val response = chain.proceed(request)
 
-                        // 101 is "Switching Protocols" (Websocket), which is NOT an error
+                        // 101 is "Switching Protocols" (Websocket), which is not an HTTP failure.
                         val isSuccessful = response.isSuccessful || response.code == 101
 
-                        if (!isSuccessful) {
-                            val errorBody = try {
-                                response.peekBody(1024).string()
-                            } catch (e: Exception) {
-                                "Unavailable"
+                        if (isDebug) {
+                            if (!isSuccessful) {
+                                val errorBody = try {
+                                    response.peekBody(1024).string()
+                                } catch (e: Exception) {
+                                    "Unavailable"
+                                }
+                                android.util.Log.e("SupabaseHTTP", "ERROR ${response.code} on ${request.url}: $errorBody")
+                            } else {
+                                android.util.Log.d("SupabaseHTTP", "${response.code} OK: ${request.url}")
                             }
-                            android.util.Log.e("SupabaseHTTP", "← ERROR ${response.code} on ${request.url}: $errorBody")
-                        } else {
-                            android.util.Log.d("SupabaseHTTP", "← ${response.code} OK: ${request.url}")
                         }
 
                         response
@@ -75,7 +81,7 @@ object SupabaseModule {
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.e("SupabaseModule", "💥 FATAL: ${e.message}", e)
+            android.util.Log.e("SupabaseModule", "Supabase initialization failed: ${e.message}", e)
             throw e
         }
     }

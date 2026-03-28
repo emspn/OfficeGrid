@@ -14,8 +14,10 @@ import com.app.officegrid.tasks.domain.repository.TaskRepository
 import com.app.officegrid.tasks.domain.repository.TaskRemarkRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,21 +29,35 @@ class TaskDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val taskId: String? = savedStateHandle["taskId"]
-    
+
     init {
-        // Start periodic sync for remarks
-        startPeriodicRemarkSync()
+        syncTaskAndRemarksOnce()
+        startPeriodicRefreshFallback()
     }
 
-    private fun startPeriodicRemarkSync() {
+    private fun syncTaskAndRemarksOnce() {
+        viewModelScope.launch {
+            taskId?.let { id ->
+                try {
+                    repository.getTaskById(id)
+                    remarkRepository.syncRemarks(id)
+                } catch (e: Exception) {
+                    Timber.e(e, "Initial task detail sync failed")
+                }
+            }
+        }
+    }
+
+    private fun startPeriodicRefreshFallback() {
         viewModelScope.launch {
             while (true) {
-                kotlinx.coroutines.delay(3000) // Sync every 3 seconds
+                delay(7000)
                 taskId?.let { id ->
                     try {
+                        repository.getTaskById(id)
                         remarkRepository.syncRemarks(id)
                     } catch (e: Exception) {
-                        android.util.Log.e("TaskDetailVM", "Remark sync failed: ${e.message}")
+                        Timber.w(e, "Periodic task detail refresh failed")
                     }
                 }
             }
@@ -54,8 +70,9 @@ class TaskDetailViewModel @Inject constructor(
             .map { task ->
                 if (task != null) UiState.Success(task) else UiState.Error("Task not found")
             }
-            .onStart { 
+            .onStart {
                 // Trigger a sync when we start observing
+                repository.getTaskById(taskId)
                 remarkRepository.syncRemarks(taskId)
             }
             .stateIn(
@@ -112,11 +129,10 @@ class TaskDetailViewModel @Inject constructor(
         val id = taskId ?: return
         viewModelScope.launch {
             _isUpdating.value = true
-            
+
             // Update status - Flow will automatically emit the new state
             repository.updateTaskStatus(id, newStatus)
                 .onSuccess {
-                    remarkRepository.addTaskRemark(id, "Status changed to ${newStatus.name.replace("_", " ")}")
                     _isUpdating.value = false
                     val message = when (newStatus) {
                         TaskStatus.TODO -> "Status updated to Pending"
@@ -154,7 +170,7 @@ class TaskDetailViewModel @Inject constructor(
     fun refreshTaskAndRemarks() {
         viewModelScope.launch {
             taskId?.let { id ->
-                android.util.Log.d("TaskDetailViewModel", "⚡ Refreshing task and remarks for: $id")
+                Timber.d("Refreshing task and remarks for: $id")
                 // Sync task from Supabase
                 repository.getTaskById(id)
                 // Sync remarks from Supabase

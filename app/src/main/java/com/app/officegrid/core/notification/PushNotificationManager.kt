@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.app.officegrid.MainActivity
 import com.app.officegrid.core.common.NotificationType
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +23,7 @@ class PushNotificationManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val recentNotificationIds = ConcurrentHashMap<String, Long>()
 
     init {
         createNotificationChannels()
@@ -76,6 +78,15 @@ class PushNotificationManager @Inject constructor(
         type: NotificationType,
         data: Map<String, String> = emptyMap()
     ) {
+        val now = System.currentTimeMillis()
+        val lastShownAt = recentNotificationIds[id]
+        if (lastShownAt != null && (now - lastShownAt) < DEDUP_WINDOW_MS) {
+            // Duplicate payload from another transport path (Realtime/FCM) in a short window.
+            return
+        }
+        recentNotificationIds[id] = now
+        cleanupOldDedupEntries(now)
+
         val channelId = getChannelIdForType(type)
         
         // 🔥 PRODUCTION-GRADE INTENT ROUTING
@@ -120,6 +131,12 @@ class PushNotificationManager @Inject constructor(
         notificationManager.notify(id.hashCode(), builder.build())
     }
 
+    private fun cleanupOldDedupEntries(now: Long) {
+        recentNotificationIds.entries.removeIf { (_, timestamp) ->
+            (now - timestamp) > DEDUP_WINDOW_MS
+        }
+    }
+
     private fun getChannelIdForType(type: NotificationType): String {
         return when (type) {
             NotificationType.TASK_ASSIGNED,
@@ -155,5 +172,6 @@ class PushNotificationManager @Inject constructor(
         private const val CHANNEL_URGENT = "officegrid_urgent_v2"
         private const val CHANNEL_DEFAULT = "officegrid_default_v2"
         private const val CHANNEL_INFO = "officegrid_info_v2"
+        private const val DEDUP_WINDOW_MS = 2 * 60 * 1000L
     }
 }

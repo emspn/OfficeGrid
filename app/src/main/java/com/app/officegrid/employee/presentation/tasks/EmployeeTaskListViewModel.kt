@@ -71,8 +71,8 @@ class EmployeeTaskListViewModel @Inject constructor(
         viewModelScope.launch {
             val user = getCurrentUserUseCase().first()
             if (user != null) {
-                android.util.Log.d("EmployeeTaskListVM", "🔄 Manually triggering sync for user ${user.id}")
-                taskRepository.syncTasks(user.id)
+                android.util.Log.d("EmployeeTaskListVM", "🔄 Manually triggering sync for company ${user.companyId}")
+                taskRepository.syncTasks(user.companyId)
             }
         }
     }

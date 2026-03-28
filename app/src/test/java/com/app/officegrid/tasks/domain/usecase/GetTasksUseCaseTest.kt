@@ -7,11 +7,13 @@ import com.app.officegrid.tasks.domain.repository.TaskRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
-import org.mockito.Mockito.*
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations
 
 class GetTasksUseCaseTest {
@@ -21,6 +23,8 @@ class GetTasksUseCaseTest {
 
     private lateinit var getTasksUseCase: GetTasksUseCase
 
+    private val testUserId = "user1"
+
     private val testTasks = listOf(
         Task(
             id = "1",
@@ -28,7 +32,7 @@ class GetTasksUseCaseTest {
             description = "Description 1",
             status = TaskStatus.TODO,
             priority = TaskPriority.HIGH,
-            assignedTo = "user1",
+            assignedTo = testUserId,
             createdBy = "admin1",
             companyId = "TEST123",
             dueDate = System.currentTimeMillis()
@@ -39,7 +43,7 @@ class GetTasksUseCaseTest {
             description = "Description 2",
             status = TaskStatus.IN_PROGRESS,
             priority = TaskPriority.MEDIUM,
-            assignedTo = "user2",
+            assignedTo = testUserId,
             createdBy = "admin1",
             companyId = "TEST123",
             dueDate = System.currentTimeMillis()
@@ -53,62 +57,30 @@ class GetTasksUseCaseTest {
     }
 
     @Test
-    fun `getTasks returns list of tasks`() = runTest {
+    fun `invoke returns list of tasks for a user`() = runTest {
         // Given
-        `when`(taskRepository.getTasks()).thenReturn(flowOf(testTasks))
+        `when`(taskRepository.getTasks(testUserId)).thenReturn(flowOf(testTasks))
 
         // When
-        val result = getTasksUseCase().first()
+        val result = getTasksUseCase(testUserId).first()
 
         // Then
         assertEquals(2, result.size)
         assertEquals("Task 1", result[0].title)
         assertEquals("Task 2", result[1].title)
-        verify(taskRepository).getTasks()
+        verify(taskRepository).getTasks(testUserId)
     }
 
     @Test
-    fun `getTasks returns empty list when no tasks exist`() = runTest {
+    fun `invoke returns empty list when no tasks exist for user`() = runTest {
         // Given
-        `when`(taskRepository.getTasks()).thenReturn(flowOf(emptyList()))
+        `when`(taskRepository.getTasks(testUserId)).thenReturn(flowOf(emptyList()))
 
         // When
-        val result = getTasksUseCase().first()
+        val result = getTasksUseCase(testUserId).first()
 
         // Then
         assertTrue(result.isEmpty())
-        verify(taskRepository).getTasks()
-    }
-
-    @Test
-    fun `getTasks filters by status correctly`() = runTest {
-        // Given
-        val todoTasks = testTasks.filter { it.status == TaskStatus.TODO }
-        `when`(taskRepository.getTasksByStatus(TaskStatus.TODO))
-            .thenReturn(flowOf(todoTasks))
-
-        // When
-        val result = taskRepository.getTasksByStatus(TaskStatus.TODO).first()
-
-        // Then
-        assertEquals(1, result.size)
-        assertEquals(TaskStatus.TODO, result[0].status)
-        verify(taskRepository).getTasksByStatus(TaskStatus.TODO)
-    }
-
-    @Test
-    fun `getTasks filters by priority correctly`() = runTest {
-        // Given
-        val highPriorityTasks = testTasks.filter { it.priority == TaskPriority.HIGH }
-        `when`(taskRepository.getTasksByPriority(TaskPriority.HIGH))
-            .thenReturn(flowOf(highPriorityTasks))
-
-        // When
-        val result = taskRepository.getTasksByPriority(TaskPriority.HIGH).first()
-
-        // Then
-        assertEquals(1, result.size)
-        assertEquals(TaskPriority.HIGH, result[0].priority)
-        verify(taskRepository).getTasksByPriority(TaskPriority.HIGH)
+        verify(taskRepository).getTasks(testUserId)
     }
 }

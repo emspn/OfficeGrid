@@ -71,6 +71,8 @@ class OfficeGridNotificationService : Service() {
                     val recipientId = rawData["user_id"]?.toString()?.removeSurrounding("\"")
                     
                     if (recipientId == user.id) {
+                        val notificationId = rawData["id"]?.toString()?.removeSurrounding("\"")
+                            ?: System.currentTimeMillis().toString()
                         val title = rawData["title"]?.toString()?.removeSurrounding("\"") ?: "OfficeGrid Update"
                         val message = rawData["message"]?.toString()?.removeSurrounding("\"") ?: ""
                         val typeStr = rawData["type"]?.toString()?.removeSurrounding("\"") ?: "SYSTEM"
@@ -78,7 +80,7 @@ class OfficeGridNotificationService : Service() {
                         val type = try { NotificationType.valueOf(typeStr) } catch (e: Exception) { NotificationType.SYSTEM }
 
                         pushNotificationManager.showNotification(
-                            id = System.currentTimeMillis().toString(),
+                            id = notificationId,
                             title = title,
                             message = message,
                             type = type

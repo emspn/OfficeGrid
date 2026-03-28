@@ -205,8 +205,13 @@ class TaskRepositoryImpl @Inject constructor(
     override suspend fun syncTasks(companyId: String): Result<Unit> {
         return try {
             val remoteTasks = supabaseDataSource.getTasks(companyId)
-            taskDao.deleteTasksByCompany(companyId)
-            taskDao.insertTasks(remoteTasks.map { it.toEntity() })
+            if (remoteTasks.isEmpty()) {
+                taskDao.deleteTasksByCompany(companyId)
+            } else {
+                val entities = remoteTasks.map { it.toEntity() }
+                taskDao.insertTasks(entities)
+                taskDao.deleteTasksByCompanyExceptIds(companyId, entities.map { it.id })
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
