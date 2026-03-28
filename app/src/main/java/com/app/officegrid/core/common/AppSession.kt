@@ -7,10 +7,7 @@ import com.app.officegrid.core.common.domain.repository.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -50,46 +47,35 @@ class SessionManager @Inject constructor(
     private fun checkInitialSession() {
         scope.launch {
             try {
-                // Production-level session check: Parallel check
-                val initialSession = authRepository.getSession()
-                if (initialSession != null) {
-                    _sessionState.update {
-                        SessionState(
-                            isInitializing = false,
-                            isLoggedIn = true,
-                            userRole = initialSession.user.role,
-                            isApproved = initialSession.user.isApproved,
-                            activeCompanyId = initialSession.user.companyId,
-                            userId = initialSession.user.id
-                        )
+                // 🚀 STEP 1: Wait for the absolute FIRST session signal from Auth
+                // This replaces the old parallel check which was causing the race condition.
+                authRepository.getCurrentUser()
+                    .onStart { 
+                        // Ensure we are in initializing state when starting
+                        _sessionState.update { it.copy(isInitializing = true) }
                     }
-                }
-
-                authRepository.getCurrentUser().collect { user ->
-                    if (user != null) {
-                        _sessionState.update { currentState ->
-                            SessionState(
-                                isInitializing = false,
-                                isLoggedIn = true,
-                                userRole = user.role,
-                                isApproved = if (currentState.activeCompanyId == user.companyId) user.isApproved else currentState.isApproved,
-                                activeCompanyId = currentState.activeCompanyId ?: user.companyId,
-                                userId = user.id
-                            )
-                        }
-                    } else {
-                        // Only log out if we're not in the middle of initializing
-                        val currentState = _sessionState.value
-                        if (!currentState.isInitializing && currentState.isLoggedIn) {
-                            _sessionState.update { SessionState(isInitializing = false) }
-                        } else if (!currentState.isLoggedIn) {
-                            _sessionState.update { it.copy(isInitializing = false) }
+                    .collect { user ->
+                        if (user != null) {
+                            _sessionState.update { currentState ->
+                                SessionState(
+                                    isInitializing = false,
+                                    isLoggedIn = true,
+                                    userRole = user.role,
+                                    isApproved = if (currentState.activeCompanyId == user.companyId) user.isApproved else user.isApproved,
+                                    activeCompanyId = currentState.activeCompanyId ?: user.companyId,
+                                    userId = user.id
+                                )
+                            }
+                        } else {
+                            // Only set to false if we are sure there is no user
+                            _sessionState.update { 
+                                SessionState(isInitializing = false, isLoggedIn = false) 
+                            }
                         }
                     }
-                }
             } catch (e: Exception) {
                 Timber.e(e, "Session Initialization Failed")
-                _sessionState.update { it.copy(isInitializing = false) }
+                _sessionState.update { it.copy(isInitializing = false, isLoggedIn = false) }
             }
         }
     }
@@ -105,30 +91,18 @@ class SessionManager @Inject constructor(
         }
     }
 
-    /**
-     * 🚀 PRODUCTION-LEVEL LOGOUT
-     * Clears all layers: Auth, Database, and Memory
-     */
     fun logout() {
         scope.launch(Dispatchers.IO) {
             try {
                 Timber.d("LOGOUT: Initiating secure teardown...")
-                
-                // 1. Wipe Auth Session (Remote)
                 authRepository.logout()
-                
-                // 2. Clear Local Persistence (Privacy/Security)
                 taskRepository.get().clearLocalData()
                 notificationRepository.get().clearAllNotifications()
-                
-                // 3. Reset Local State (UI)
-                _sessionState.update { SessionState(isInitializing = false) }
-                
+                _sessionState.update { SessionState(isInitializing = false, isLoggedIn = false) }
                 Timber.d("LOGOUT: Cleanup complete.")
             } catch (e: Exception) {
                 Timber.e(e, "Logout error")
-                // Force UI reset anyway
-                _sessionState.update { SessionState(isInitializing = false) }
+                _sessionState.update { SessionState(isInitializing = false, isLoggedIn = false) }
             }
         }
     }

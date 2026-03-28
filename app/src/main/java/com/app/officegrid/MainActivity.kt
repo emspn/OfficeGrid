@@ -12,6 +12,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,9 +72,9 @@ class MainActivity : ComponentActivity() {
                         
                         // ✅ SAFE PRODUCTION FCM TOKEN SYNC
                         try {
-                            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    task.result?.let { token ->
+                            FirebaseMessaging.getInstance().token.addOnCompleteListener { fetchTask ->
+                                if (fetchTask.isSuccessful) {
+                                    fetchTask.result?.let { token ->
                                         lifecycleScope.launch(Dispatchers.IO) {
                                             try {
                                                 notificationRepository.registerFCMToken(token)
@@ -84,7 +85,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 } else {
-                                    Timber.w("FCM token retrieval failed: ${task.exception?.message}")
+                                    Timber.w("FCM token retrieval failed: ${fetchTask.exception?.message}")
                                 }
                             }
                         } catch (e: Exception) {

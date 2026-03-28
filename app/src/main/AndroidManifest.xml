@@ -15,9 +15,9 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
-        android:icon="@drawable/img_1"
+        android:icon="@drawable/og_01"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/img_1"
+        android:roundIcon="@drawable/og_01"
         android:supportsRtl="true"
         android:theme="@style/Theme.OfficeGrid"
         android:usesCleartextTraffic="true">

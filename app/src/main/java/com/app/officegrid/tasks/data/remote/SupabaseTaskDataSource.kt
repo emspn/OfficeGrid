@@ -8,9 +8,11 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -72,33 +74,39 @@ class SupabaseTaskDataSource @Inject constructor(
     }
 
     /**
-     * ⚡ REALTIME ENGINE (Multi-Node Aware)
+     * ⚡ REALTIME ENGINE (Safe Version)
+     * Fixed the 'filter' visibility issue by filtering on the client side.
      */
     fun observeTasks(companyId: String): Flow<TaskRealtimeEvent> {
-        val channel = realtime.channel("tasks_$companyId")
+        val channel = realtime.channel("tasks_registry_$companyId")
         
-        // Define flow BEFORE subscription to avoid IllegalStateException
         val changeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "tasks"
         }
 
         return changeFlow.onStart {
             channel.subscribe()
-        }.map { action ->
-            when (action) {
-                is PostgresAction.Insert -> {
-                    val task = json.decodeFromJsonElement<TaskDto>(action.record)
-                    TaskRealtimeEvent.Inserted(task)
+            Timber.d("REALTIME: Subscribed to missions for registry $companyId")
+        }.mapNotNull { action ->
+            try {
+                when (action) {
+                    is PostgresAction.Insert -> {
+                        val task = json.decodeFromJsonElement<TaskDto>(action.record)
+                        if (task.company_id == companyId) TaskRealtimeEvent.Inserted(task) else null
+                    }
+                    is PostgresAction.Update -> {
+                        val task = json.decodeFromJsonElement<TaskDto>(action.record)
+                        if (task.company_id == companyId) TaskRealtimeEvent.Updated(task) else null
+                    }
+                    is PostgresAction.Delete -> {
+                        val id = action.oldRecord["id"]?.toString()?.removeSurrounding("\"") ?: ""
+                        if (id.isNotBlank()) TaskRealtimeEvent.Deleted(id) else null
+                    }
+                    else -> null
                 }
-                is PostgresAction.Update -> {
-                    val task = json.decodeFromJsonElement<TaskDto>(action.record)
-                    TaskRealtimeEvent.Updated(task)
-                }
-                is PostgresAction.Delete -> {
-                    val id = action.oldRecord["id"].toString().removeSurrounding("\"")
-                    TaskRealtimeEvent.Deleted(id)
-                }
-                else -> throw Exception("Unknown realtime action")
+            } catch (e: Exception) {
+                Timber.e(e, "REALTIME: Failed to parse mission action")
+                null
             }
         }
     }

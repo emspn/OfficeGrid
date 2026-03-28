@@ -5,9 +5,11 @@ import com.app.officegrid.auth.domain.model.User
 import com.app.officegrid.auth.domain.model.UserSession
 import com.app.officegrid.auth.domain.repository.AuthRepository
 import com.app.officegrid.core.common.UserRole
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -61,16 +63,23 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * 🚀 REFINED FOR PRODUCTION:
+     * Filters out non-ready states so the UI doesn't flicker between logged-out and logged-in
+     * while Supabase is still initializing its session from local persistence.
+     */
     override fun getCurrentUser(): Flow<User?> {
-        return remoteDataSource.getSessionStatus().map { status ->
-            when (status) {
-                is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
-                    val userInfo = remoteDataSource.getCurrentUserInfo()
-                    userInfo?.toDomain()
+        return remoteDataSource.getSessionStatus()
+            .filter { it !is SessionStatus.Initializing }
+            .map { status ->
+                when (status) {
+                    is SessionStatus.Authenticated -> {
+                        val userInfo = remoteDataSource.getCurrentUserInfo()
+                        userInfo?.toDomain()
+                    }
+                    else -> null
                 }
-                else -> null
             }
-        }
     }
 
     override suspend fun getSession(): UserSession? {
@@ -81,7 +90,6 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun updateActiveCompany(companyId: String): Result<Unit> {
         return try {
             val user = remoteDataSource.getCurrentUserInfo() ?: throw Exception("Not logged in")
-            // Updated to use 'employees' table instead of non-existent 'profiles'
             postgrest["employees"].update(
                 mapOf("company_id" to companyId)
             ) {
@@ -101,9 +109,6 @@ class AuthRepositoryImpl @Inject constructor(
         
         val role = if (roleStr?.uppercase() == "ADMIN") UserRole.ADMIN else UserRole.EMPLOYEE
         
-        // Admins are always approved by the DB trigger
-        // Employees status should ideally be fetched from the 'employees' table for real-time accuracy,
-        // but for the initial domain mapping from Auth, we check the metadata.
         val isApproved = if (role == UserRole.ADMIN) true 
                          else rawData?.get("is_approved")?.toString()?.toBoolean() ?: false
 
@@ -113,7 +118,6 @@ class AuthRepositoryImpl @Inject constructor(
             fullName = fullName,
             role = role,
             companyId = companyId,
-            // Changed from 'organisation_name' to 'org_name' to match SupabaseAuthDataSource and DB Trigger
             companyName = rawData?.get("org_name")?.toString()?.removeSurrounding("\""),
             isApproved = isApproved
         )

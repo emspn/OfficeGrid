@@ -15,14 +15,14 @@ import com.app.officegrid.R
 
 /**
  * ✨ OFFICEGRID BRAND LOGO
- * Programmatically cropped to focus on the core logo and remove excessive padding.
+ * Updated to use the tactical og_01 brand asset with optimized alignment.
  */
 @Composable
 fun OfficeGridLogo(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp
 ) {
-    // We use a Box as a viewport and scale the image inside it to "crop" the padding.
+    // We use a Box as a viewport and scale the image inside it to "crop" the transparent padding.
     Box(
         modifier = modifier
             .size(size)
@@ -30,9 +30,9 @@ fun OfficeGridLogo(
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.img_1),
+            painter = painterResource(id = R.drawable.og_01),
             contentDescription = "OfficeGrid Logo",
-            modifier = Modifier.size(size * 1.6f), // Zoom in by 60% to crop white space
+            modifier = Modifier.size(size * 1.5f), // Zoom in by 50% to fill space properly
             contentScale = ContentScale.Fit
         )
     }
