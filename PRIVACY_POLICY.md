@@ -43,4 +43,4 @@ We may update this policy from time to time. Any changes will be reflected in th
 
 ## 8. Contact Us
 If you have any questions about this Privacy Policy, please contact us at:
-**support@officegrid.com**
+**shaktispn18@gmail.com**
